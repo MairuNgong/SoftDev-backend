@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:13
+    container_name: test_postgres_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+  
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: test_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    
+  api:
+    build: 
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: test_api
+    restart: always
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      API_PORT: ${API_PORT}
+    ports:
+      - "${API_PORT}:5000"
+    depends_on:
+      - db
+
+volumes:
+  db_data:
