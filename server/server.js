@@ -4,6 +4,7 @@ const sequelize = require('./db');
 const passport = require('passport');
 const session = require('express-session');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
 dotenv.config();
@@ -64,25 +65,32 @@ app.get("/", (req, res) => {
 
 app.get("/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
-app.get(
-  "/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: "/" }),
+// Google callback
+app.get('/auth/google/callback', 
+  passport.authenticate('google', { session: false, failureRedirect: '/' }),
   (req, res) => {
-    res.send(`Hello ${req.user.name} (${req.user.email})`);
+    // Create JWT
+    const payload = { email: req.user.email, name: req.user.name };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+    
+    // Send JWT to client
+    res.json({ token, user: payload });
   }
 );
 
-app.get("/profile", (req, res) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).send('You are not authenticated');
-  }
-  res.send(`Hello ${req.user.name} (${req.user.email})`);
-});
+// Protected route example
+app.get('/profile', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) return res.status(401).json({ error: 'Missing token' });
 
-app.get("/logout", (req, res) => {
-  req.logout(() => {
-    res.redirect("/");
-  });
+    const token = authHeader.split(' ')[1]; // Bearer <token>
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    res.json({ user: decoded });
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
 });
 
 // Read all
