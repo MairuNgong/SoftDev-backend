@@ -1,6 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
-const sequelize = require('./db');
+const sequelize = require('./config/db');
 const passport = require('passport');
 const session = require('express-session');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
