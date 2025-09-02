@@ -9,3 +9,4 @@
    6.3 บนtab connection: host name/address= db, username/password ดูใน .env POSTGRES_USER,POSTGRES_PASSWORD
    6.4 ไปดู table ได้ที่ Server>xxxx>twinderdb>Schemas>Table
    6.5 โดยสามารถ click ขวาที่table ต่างๆ แล้วกด View/edit data เพื่อดูได้
+   kingking
