@@ -4,6 +4,7 @@ const sequelize = require('./config/db');
 const passport = require('./config/passport'); // ← FIXED: Import from config folderconst session = require('express-session');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
+const indexRoutes = require('./routes/index');
 const session = require('express-session');
 
 dotenv.config();
@@ -27,7 +28,7 @@ app.use(passport.session());
 app.use(express.json());
 
 
-
+app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 // app.get("/", (req, res) => {
