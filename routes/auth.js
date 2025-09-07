@@ -3,18 +3,15 @@ const router = express.Router();
 const passport = require('../config/passport');
 const jwt = require('jsonwebtoken');
 
-
-
-
 router.get("/", (req, res) => {
   res.send(`<a href="/auth/google">Login with Google</a>`);
 });
 
-router.get("/auth/google", passport.authenticate("google", { 
+router.get("/google", passport.authenticate("google", { 
   scope: ["profile", "email"]  // Request access to profile and email
 }));
 
-router.get('/auth/google/callback', 
+router.get('/google/callback', 
   passport.authenticate('google', { 
     session: false,            // Don't use sessions (we're using JWT)
     failureRedirect: '/'       // Redirect to home if authentication fails
