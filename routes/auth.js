@@ -1,20 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const passport = require('../server/config/passport');
+const passport = require('../config/passport');
 const jwt = require('jsonwebtoken');
 
 
 
 
-app.get("/", (req, res) => {
+router.get("/", (req, res) => {
   res.send(`<a href="/auth/google">Login with Google</a>`);
 });
 
-app.get("/auth/google", passport.authenticate("google", { 
+router.get("/auth/google", passport.authenticate("google", { 
   scope: ["profile", "email"]  // Request access to profile and email
 }));
 
-app.get('/auth/google/callback', 
+router.get('/auth/google/callback', 
   passport.authenticate('google', { 
     session: false,            // Don't use sessions (we're using JWT)
     failureRedirect: '/'       // Redirect to home if authentication fails
@@ -30,7 +30,7 @@ app.get('/auth/google/callback',
   }
 );
 
-app.get('/profile', async (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
     const authHeader = req.headers['authorization'];
     if (!authHeader) return res.status(401).json({ error: 'Missing token' });
@@ -43,4 +43,5 @@ app.get('/profile', async (req, res) => {
     res.status(401).json({ error: 'Invalid token' });
   }
 });
+
 module.exports = router;

@@ -1,12 +1,10 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const sequelize = require('./config/db');
-const passport = require('./server/config/passport'); // ← FIXED: Import from config folderconst session = require('express-session');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const jwt = require('jsonwebtoken');
-const User = require('./models/User');
+const passport = require('./config/passport'); // ← FIXED: Import from config folderconst session = require('express-session');
 const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
+const userRoutes = require('./routes/user');
+const session = require('express-session');
 
 dotenv.config();
 const app = express();

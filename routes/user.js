@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../server/models/User');
+const User = require('../models/User');
 
 
 
-app.get('/users', async (req, res) => {
+router.get('/users', async (req, res) => {
   const users = await User.findAll();  // Sequelize method to get all records
   res.json(users);
 });
 
-app.get('/users/:email', async (req, res) => {
+router.get('/users/:email', async (req, res) => {
   const user = await User.findByPk(req.params.email);  // Find by primary key
   if (!user) return res.status(404).json({ error: 'User not found' });
   res.json(user);
 });
 
-app.put('/users/:email', async (req, res) => {
+router.put('/users/:email', async (req, res) => {
   try {
     const user = await User.findByPk(req.params.email);
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -26,7 +26,7 @@ app.put('/users/:email', async (req, res) => {
   }
 });
 
-app.delete('/users/:email', async (req, res) => {
+router.delete('/users/:email', async (req, res) => {
   const user = await User.findByPk(req.params.email);
   if (!user) return res.status(404).json({ error: 'User not found' });
   await user.destroy();  // Sequelize method to delete record

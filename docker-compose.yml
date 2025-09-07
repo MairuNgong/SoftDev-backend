@@ -28,7 +28,7 @@ services:
   api:
     build: 
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: Dockerfile
     container_name: test_api
     restart: always
     environment:
