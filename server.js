@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const indexRoutes = require('./routes/index');
 const session = require('express-session');
+const { User, InterestedCatagory } = require('./models');
 
 dotenv.config();
 const app = express();
@@ -19,10 +20,6 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-
-
-
 //Routes
 
 app.use(express.json());
