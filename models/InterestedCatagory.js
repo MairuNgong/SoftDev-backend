@@ -1,31 +1,33 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const User = require('./User'); // import the User model
+const User = require('./User');
 
 const InterestedCategory = sequelize.define('InterestedCategory', {
-  ID: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true
-  },
-  email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    references: {
-      model: User,
-      key: 'email'
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
     },
-    onUpdate: 'CASCADE',
-    onDelete: 'CASCADE'
-  },
-  CategoryName: {
-    type: DataTypes.STRING,
-    allowNull: false
-  }
+    email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        references: {
+            model: User,
+            key: 'email'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+        validate: {
+            isEmail: true
+        }
+    },
+    categoryName: {
+        type: DataTypes.STRING,
+        allowNull: false
+    }
 }, { timestamps: true });
 
-// Set up association
-User.hasMany(InterestedCategory, { foreignKey: 'email', as: 'interests' });
-InterestedCategory.belongsTo(User, { foreignKey: 'email', as: 'user' });
+User.hasMany(InterestedCategory, { foreignKey: 'email' });
+InterestedCategory.belongsTo(User, { foreignKey: 'email' });
 
 module.exports = InterestedCategory;
