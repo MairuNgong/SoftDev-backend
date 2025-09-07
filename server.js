@@ -34,7 +34,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
   try {
     await sequelize.authenticate();
-    await sequelize.sync(); // Creates tables if not exist
+    await sequelize.sync({ force: true }); // ⚠️ drops all tables then recreates
     console.log('Database connected ✅');
     console.log(`API running on http://localhost:${PORT}`);
   } catch (err) {
