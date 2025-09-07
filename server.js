@@ -6,7 +6,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const indexRoutes = require('./routes/index');
 const session = require('express-session');
-const { User, InterestedCatagory } = require('./models');
+const { User, InterestedCatagory, Blocked, ImagePicture, Item, ItemCatagory, Message, Rating, TradeItem, WatchedItem } = require('./models');
 
 dotenv.config();
 const app = express();
