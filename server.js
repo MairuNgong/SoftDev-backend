@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const indexRoutes = require('./routes/index');
 const session = require('express-session');
+const { User, InterestedCatagory, Blocked, ImagePicture, Item, ItemCatagory, Message, Rating, TradeItem, WatchedItem } = require('./models');
 
 dotenv.config();
 const app = express();
@@ -31,14 +32,13 @@ app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 
-
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.API_PORT || 5000;
 app.listen(PORT, async () => {
   try {
     await sequelize.authenticate();
     // In your server.js:
-    await sequelize.sync({ alter: true }); // Alters tables to match models // Creates tables if not exist
+    await sequelize.sync({ force: true }); // Alters tables to match models // Creates tables if not exist
     console.log('Database connected ✅');
     console.log(`API running on http://localhost:${PORT}`);
   } catch (err) {
