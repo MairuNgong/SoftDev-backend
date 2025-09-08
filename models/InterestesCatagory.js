@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const User = require('./User'); // import the User model
+// REMOVE THIS: const User = require('./User'); // ← This causes circular dependency
 
 const InterestedCategory = sequelize.define('InterestedCategory', {
   ID: {
@@ -12,7 +12,7 @@ const InterestedCategory = sequelize.define('InterestedCategory', {
     type: DataTypes.STRING,
     allowNull: false,
     references: {
-      model: User,
+      model: 'Users', // ← Use table name string instead of model reference
       key: 'email'
     },
     onUpdate: 'CASCADE',
@@ -22,10 +22,9 @@ const InterestedCategory = sequelize.define('InterestedCategory', {
     type: DataTypes.STRING,
     allowNull: false
   }
-}, { timestamps: true });
-
-// Set up association
-User.hasMany(InterestedCategory, { foreignKey: 'email', as: 'interests' });
-InterestedCategory.belongsTo(User, { foreignKey: 'email', as: 'user' });
+}, {
+  timestamps: true,
+  tableName: 'interested_categories' // Explicit table name
+});
 
 module.exports = InterestedCategory;
