@@ -30,7 +30,7 @@ app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.API_PORT || 5000;
 app.listen(PORT, async () => {
   try {
     await sequelize.authenticate();
