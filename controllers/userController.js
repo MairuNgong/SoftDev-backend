@@ -1,13 +1,13 @@
 const User = require('../models/User');
 
-exports.getAllUsers = async (req, res) => {
-  try {
-    const users = await User.findAll();
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+// exports.getAllUsers = async (req, res) => {
+//   try {
+//     const users = await User.findAll();
+//     res.json(users);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 
 exports.getUserByEmail = async (req, res) => {
   try {
@@ -30,13 +30,13 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-exports.deleteUser = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.params.email);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    await user.destroy();
-    res.json({ message: 'User deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+// exports.deleteUser = async (req, res) => {
+//   try {
+//     const user = await User.findByPk(req.params.email);
+//     if (!user) return res.status(404).json({ error: 'User not found' });
+//     await user.destroy();
+//     res.json({ message: 'User deleted' });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
