@@ -21,15 +21,15 @@ exports.googleCallback = [
     });
 
     const user = JSON.stringify(payload);
-    res.res(`twinder://callback?token=${token}&user=${encodeURIComponent(user)}`);
+    res.redirect(`twinder://callback?token=${token}&user=${encodeURIComponent(user)}`);
   }
 ];
 
 
 exports.devToken = (req, res) => {
   // For dev: use query params or defaults
-  const email = req.query.email ;
-  const name = req.query.name ;
+  const email = req.query.email;
+  const name = req.query.name;
   const payload = { email, name };
   const token = jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN
