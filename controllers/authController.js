@@ -21,20 +21,18 @@ exports.googleCallback = [
     });
 
     const user = JSON.stringify(payload);
-    res.redirect(`twinder://callback?token=${token}&user=${encodeURIComponent(user)}`);
+    res.res(`twinder://callback?token=${token}&user=${encodeURIComponent(user)}`);
   }
 ];
 
-exports.profile = async (req, res) => {
-  try {
-    const authHeader = req.headers['authorization'];
-    if (!authHeader) return res.status(401).json({ error: 'Missing token' });
 
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    res.json({ user: decoded });
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
+exports.devToken = (req, res) => {
+  // For dev: use query params or defaults
+  const email = req.query.email ;
+  const name = req.query.name ;
+  const payload = { email, name };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN
+  });
+  res.json({ token, user: payload });
 };

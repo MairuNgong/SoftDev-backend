@@ -8,6 +8,6 @@ router.get("/google", authController.googleAuth);
 
 router.get('/google/callback', authController.googleCallback);
 
-router.get('/profile', authController.profile);
+router.get('/dev-token', authController.devToken);
 
 module.exports = router;
