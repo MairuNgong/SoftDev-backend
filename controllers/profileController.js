@@ -7,7 +7,7 @@ exports.profile = async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
 
 
-    const owner = req.user && req.user.email === user.email;
+    const owner = !!(req.user && req.user.email === user.email);
 
     const items = await Item.findAll({ where: { ownerEmail: user.email } });
     res.json({ user, items, owner });
