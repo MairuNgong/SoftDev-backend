@@ -8,10 +8,8 @@ const { Op } = require('sequelize'); // Don't forget to import Op!
  */
 const getUnwatchedItems = async (req, res) => {
   try {
-    // If req.user is not set, just return any 10 items
-    if (!req.user) {
-      const items = await Item.findAll({ limit: 10 });
-      return res.json(items);
+    if (req.user.email !== req.params.email) {
+      return res.status(403).json({ error: 'Forbidden: Email mismatch or unauthenticated' });
     }
 
     // Find the user by their primary key (email)
