@@ -27,13 +27,3 @@ exports.googleCallback = [
 ];
 
 
-exports.devToken = (req, res) => {
-  // For dev: use query params or defaults
-  const email = req.query.email;
-  const name = req.query.name;
-  const payload = { email, name };
-  const token = jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN
-  });
-  res.json({ token, user: payload });
-};

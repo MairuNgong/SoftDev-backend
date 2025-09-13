@@ -4,7 +4,7 @@ const itemController = require('../controllers/itemController');
 const { requireAuth, tryAuth } = require('../middleware/auth');
 
 // Public: list items (optionally filter ?ownerEmail=&status=)
-router.get('/', tryAuth, itemController.getItems);
+// router.get('/', tryAuth, itemController.getItems);
 
 // Public: get one item; responds with { item, owner: boolean }
 router.get('/:id', tryAuth, itemController.getItemById);
