@@ -1,4 +1,5 @@
 const { User, Item, WatchedItem } = require('../models');
+const sequelize = require('../config/db');
 const { Op } = require('sequelize'); // Don't forget to import Op!
 
 /**
@@ -8,12 +9,16 @@ const { Op } = require('sequelize'); // Don't forget to import Op!
  */
 const getUnwatchedItems = async (req, res) => {
   try {
-    if (req.user.email !== req.params.email) {
-      return res.status(403).json({ error: 'Forbidden: Email mismatch or unauthenticated' });
-    }
 
+    if (!req.user || !req.user.email) {
+      const randomItems = await Item.findAll({
+        order: [ [sequelize.fn('RANDOM')] ],
+        limit: 10
+      });
+      return res.json(randomItems);
+    }
     // Find the user by their primary key (email)
-    const user = await User.findByPk(req.params.email);
+    const user = await User.findByPk(req.user.email);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
