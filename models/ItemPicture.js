@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 const Item = require('./Item');
 
-const ImagePicture = sequelize.define('ImagePicture', {
+const ItemPicture = sequelize.define('ItemPicture', {
     id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
@@ -24,7 +24,7 @@ const ImagePicture = sequelize.define('ImagePicture', {
     }
 }, { timestamps: true });
 
-Item.hasMany(ImagePicture, { foreignKey: 'itemId' });
-ImagePicture.belongsTo(Item, { foreignKey: 'itemId' });
+Item.hasMany(ItemPicture, { foreignKey: 'itemId' });
+ItemPicture.belongsTo(Item, { foreignKey: 'itemId' });
 
-module.exports = ImagePicture;
+module.exports = ItemPicture;

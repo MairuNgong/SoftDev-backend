@@ -1,5 +1,5 @@
 const Item = require('../models/Item');
-
+const ItemPicture = require('../models/ItemPicture');
 /**
  * Helper to only allow safe fields. Adjust this whitelist to match your Item model.
  * If your Item fields change, update this list accordingly.
@@ -27,6 +27,15 @@ exports.createItem = async (req, res) => {
         if (!data.name) {
             return res.status(400).json({ error: 'name is required' });
         }
+
+        if (req.body.imageUrl) {
+            await ItemPicture.create({
+                itemId: item.id,
+                imageLink: req.body.imageUrl
+            });
+            delete req.body.imageUrl;
+        }
+        
         // Owner is always the token user
         data.ownerEmail = req.user.email;
 
@@ -80,6 +89,16 @@ exports.updateItem = async (req, res) => {
 
         const data = pickAllowed(req.body);
         await item.update(data);
+
+        // If imageUrl is set by cloudinary middleware, store it in ImagePicture table
+        if (req.body.imageUrl) {
+            await ItemPicture.create({
+                itemId: item.id,
+                imageLink: req.body.imageUrl
+            });
+            delete req.body.imageUrl;
+        }
+
         return res.json(item);
     } catch (err) {
         return res.status(500).json({ error: err.message });

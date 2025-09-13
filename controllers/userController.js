@@ -23,6 +23,13 @@ exports.updateUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.params.email);
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    //req.body.imageUrl is set by cloudinary middleware
+    if (req.body.imageUrl) {
+      req.body.ProfilePicture = req.body.imageUrl;
+      delete req.body.imageUrl;
+    }
+
     await user.update(req.body);
     res.json(user);
   } catch (err) {

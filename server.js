@@ -40,7 +40,7 @@ app.listen(PORT, async () => {
   try {
     await sequelize.authenticate();
     // In your server.js:
-    // await sequelize.sync({ force: true }); // Alters tables to match models // Creates tables if not exist
+    await sequelize.sync({ force: true }); // Alters tables to match models // Creates tables if not exist
     console.log('Database connected ✅');
     console.log(`API running on http://localhost:${PORT}`);
   } catch (err) {
