@@ -15,6 +15,7 @@ exports.googleCallback = [
     failureRedirect: '/'
   }),
   (req, res) => {
+
     const payload = { email: req.user.email, name: req.user.name };
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN
