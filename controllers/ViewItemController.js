@@ -7,7 +7,7 @@ const { Op } = require('sequelize'); // Don't forget to import Op!
  * @route   GET /users/:email/un_watched_item
  * @access  Private (or Public, depending on your auth)
  */
-const getUnwatchedItems = async (req, res) => {
+exports.getUnwatchedItems = async (req, res) => {
   try {
 
     if (!req.user || !req.user.email) {
@@ -46,8 +46,4 @@ const getUnwatchedItems = async (req, res) => {
     console.error("Error fetching unwatched items:", error);
     res.status(500).json({ error: 'Internal server error' });
   }
-};
-
-module.exports = {
-  getUnwatchedItems
 };
