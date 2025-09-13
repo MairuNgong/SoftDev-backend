@@ -8,7 +8,7 @@ const { upload, uploadImageToCloudinary } = require('../middleware/cloudinary');
 
 // router.get('/', userController.getAllUsers);
 router.get('/:email', tryAuth, userController.getUserByEmail);
-router.put('/:email', requireAuth, upload.single('ProfilePicture'), uploadImageToCloudinary('Softdev/Profile'), userController.updateUser);
+router.put('/', requireAuth, upload.single('ProfilePicture'), uploadImageToCloudinary('Softdev/Profile'), userController.updateUser);
 // router.delete('/:email', userController.deleteUser);
 router.get('/profile/:email', tryAuth, profileController.profile);
 
