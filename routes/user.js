@@ -1,5 +1,7 @@
+
 const express = require('express');
 const router = express.Router();
+
 const { User, Item, WatchedItem } = require('../models');
 
 
@@ -71,5 +73,15 @@ router.get('/:email/un_watched_item', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+
+const userController = require('../controllers/userController');
+const profileController = require('../controllers/profileController');
+
+// router.get('/', userController.getAllUsers);
+router.get('/:email', userController.getUserByEmail);
+router.put('/:email', userController.updateUser);
+// router.delete('/:email', userController.deleteUser);
+router.get('/profile/:email', profileController.profile);
 
 module.exports = router;
