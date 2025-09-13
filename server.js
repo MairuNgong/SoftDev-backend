@@ -5,6 +5,7 @@ const passport = require('./config/passport'); // ← FIXED: Import from config 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const indexRoutes = require('./routes/index');
+const itemRoutes = require('./routes/item');
 const session = require('express-session');
 const { User, InterestedCatagory, Blocked, ImagePicture, Item, ItemCatagory, Message, Rating, TradeItem, WatchedItem } = require('./models');
 
@@ -31,6 +32,7 @@ app.use(passport.session());
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
+app.use('/items', itemRoutes);
 
 // Start server
 const PORT = process.env.INSIDE_PORT;
