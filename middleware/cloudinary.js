@@ -1,3 +1,4 @@
+// middleware/cloudinary.js
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
@@ -10,32 +11,32 @@ cloudinary.config({
 
 const upload = multer();
 
+/**
+ * Use AFTER: upload.single('ImagePicture')
+ * If file exists, uploads to Cloudinary, sets req.body.imageUrl / imagePublicId, then next().
+ * If no file, just next().
+ */
 function uploadImageToCloudinary(folder = 'Softdev') {
   return async function (req, res, next) {
-    if (req.file) {
-      try {
-        const streamUpload = (req) => {
-          return new Promise((resolve, reject) => {
-            let stream = cloudinary.uploader.upload_stream(
-              { folder },
-              (error, result) => {
-                if (result) resolve(result);
-                else reject(error);
-              }
-            );
-            streamifier.createReadStream(req.file.buffer).pipe(stream);
-          });
-        };
+    if (!req.file) return next();
 
-        const result = await streamUpload(req);
-        req.body.imageUrl = result.secure_url; // Use a generic key
-      } catch (err) {
-        return res.status(400).json({ error: 'Image upload failed', details: err.message });
-      }
+    try {
+      const result = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          { folder },
+          (error, result) => (error ? reject(error) : resolve(result))
+        );
+        streamifier.createReadStream(req.file.buffer).pipe(stream);
+      });
+
+      req.body.imageUrl = result.secure_url;
+      req.body.imagePublicId = result.public_id;
+      return next();
+    } catch (err) {
+      console.error('Cloudinary upload failed:', err);
+      return res.status(400).json({ error: 'Image upload failed', details: err.message });
     }
-    next();
   };
 }
-
 
 module.exports = { upload, uploadImageToCloudinary };
