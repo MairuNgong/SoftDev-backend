@@ -1,13 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const itemController = require('../controllers/itemController');
+const itemController = require('../controllers/ItemController'); // make sure the file name matches exactly
 const ViewItemController = require('../controllers/ViewItemController');
 const { requireAuth, tryAuth } = require('../middleware/auth');
 const { upload, uploadImageToCloudinary } = require('../middleware/cloudinary');
+
 // Public: list items (optionally filter ?ownerEmail=&status=)
 router.get('/', tryAuth, itemController.getItems);
 
-router.get('/un_watched_item', tryAuth, ViewItemController.getUnWatchedItems);
+router.get('/un_watched_item', tryAuth, ViewItemController.getUnwatchedItems);
+
 // Public: get one item; responds with { item, owner: boolean }
 router.get('/:id', tryAuth, itemController.getItemById);
 
