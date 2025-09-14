@@ -7,7 +7,7 @@ const { upload, uploadImageToCloudinary } = require('../middleware/cloudinary');
 // Public: list items (optionally filter ?ownerEmail=&status=)
 router.get('/', tryAuth, itemController.getItems);
 
-router.get('/un_watched_item', tryAuth, ViewItemController.getUnWatchedItems);
+router.get('/un_watched_item', tryAuth, ViewItemController.getUnwatchedItems);
 // Public: get one item; responds with { item, owner: boolean }
 router.get('/:id', tryAuth, itemController.getItemById);
 

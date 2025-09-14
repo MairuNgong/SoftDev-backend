@@ -41,12 +41,6 @@ const TradeTransaction = sequelize.define('TradeTransaction', {
         defaultValue: 'Offering'
     },
 
-    dateTime: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW
-    },
-
     // Money amounts (use DECIMAL to avoid float rounding issues)
     offerMoney: {
         type: DataTypes.DECIMAL(12, 2),
@@ -70,9 +64,20 @@ const TradeTransaction = sequelize.define('TradeTransaction', {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false
+    },
+    isOffererConfirm: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
+
+    isAccepterConfirm: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
     }
 }, {
-    timestamps: false,              // you provided your own dateTime field
+    timestamps: true,              // you provided your own dateTime field
     tableName: 'TradeTransactions',
     indexes: [
         { fields: ['offerEmail'] },
