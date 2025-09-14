@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const itemController = require('../controllers/ItemController'); // make sure casing matches your file
+const itemController = require('../controllers/itemController'); // make sure casing matches your file
 const ViewItemController = require('../controllers/ViewItemController');
 const { requireAuth, tryAuth } = require('../middleware/auth');
 const { upload, uploadImageToCloudinary } = require('../middleware/cloudinary');
