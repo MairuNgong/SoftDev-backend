@@ -6,6 +6,8 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const indexRoutes = require('./routes/index');
 const itemRoutes = require('./routes/item');
+const interestedCatagoryRoutes = require('./routes/interestedCatagory');
+const itemCatagoryRoutes = require('./routes/itemCatagory');
 const session = require('express-session');
 const { User, InterestedCatagory, Blocked, ImagePicture, Item, ItemCatagory, Message, Rating, TradeItem, WatchedItem } = require('./models');
 
@@ -33,6 +35,9 @@ app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/items', itemRoutes);
+app.use('/interested-catagory', interestedCatagoryRoutes);
+app.use('/item-catagory', itemCatagoryRoutes);
+
 
 // Start server
 const PORT = process.env.INSIDE_PORT;
