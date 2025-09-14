@@ -13,10 +13,10 @@ router.get('/un_watched_item', tryAuth, ViewItemController.getUnwatchedItems);
 router.get('/:id', tryAuth, itemController.getItemById);
 
 // Auth required: create
-router.post('/', requireAuth, upload.single('ImagePicture'), uploadImageToCloudinary('Softdev/Item'), itemController.createItem);
+router.post('/', requireAuth, upload.single('ItemPicture'), uploadImageToCloudinary('Softdev/Item'), itemController.createItem);
 
 // Auth required + owner check: update
-router.put('/:id', requireAuth, upload.single('ImagePicture'), uploadImageToCloudinary('Softdev/Item'), itemController.updateItem);
+router.put('/:id', requireAuth, upload.single('ItemPicture'), uploadImageToCloudinary('Softdev/Item'), itemController.updateItem);
 
 // Auth required + owner check: delete
 router.delete('/:id', requireAuth, itemController.deleteItem);
