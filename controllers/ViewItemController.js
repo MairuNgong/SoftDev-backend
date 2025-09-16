@@ -83,3 +83,77 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+
+/**
+ * @desc    Get all unwatched items for a specific user, excluding items in active trades
+ * @param   {string} email - The user's email address
+ * @param   {Array} itemList - Optional list of items to filter from
+ * @return  {Promise<Array>} - Array of available unwatched items
+ */
+
+exports.getAvailableUnwatchedItems = async (req, res) => {
+  try {
+    const { email } = req.query; // Assuming email comes from query parameters
+
+    // If no email provided, return random available items
+    if (!email) {
+      const randomItems = await Item.findAll({
+        where: {
+          // Exclude items that are in 'Matching' or 'Complete' trades
+          id: {
+            [Op.notIn]: sequelize.literal(`(
+              SELECT DISTINCT ti."itemId" 
+              FROM "TradeItems" ti
+              JOIN "TradeTransactions" tt ON ti."transactionId" = tt.id
+              WHERE tt.status IN ('Matching', 'Complete')
+            )`)
+          }
+        },
+        order: [[sequelize.fn('RANDOM')]],
+        limit: 10
+      });
+      return res.status(200).json(randomItems);
+    }
+
+    // Find user by email
+    const user = await User.findByPk(email);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get watched items from database
+    const watchedItems = await user.getWatchedItems({ joinTableAttributes: [] });
+    const watchedItemIds = watchedItems.map(i => i.id);
+
+    // Find items that are: 
+    // 1. NOT watched by user
+    // 2. NOT in active trades  
+    // 3. NOT owned by the current user
+    const availableUnwatchedItems = await Item.findAll({
+      where: {
+        [Op.and]: [
+          // Exclude watched items
+          { id: { [Op.notIn]: watchedItemIds } },
+          // Exclude items in active trades
+          { id: { [Op.notIn]: sequelize.literal(`(
+            SELECT DISTINCT ti."itemId" 
+            FROM "TradeItems" ti
+            JOIN "TradeTransactions" tt ON ti."transactionId" = tt.id
+            WHERE tt.status IN ('Matching', 'Complete')
+          )`) } },
+          // Exclude user's own items
+          { ownerEmail: { [Op.ne]: email } }
+        ]
+      },
+      order: [['createdAt', 'DESC']],
+      limit: 10 // Added limit to return only 10 items
+    });
+
+    return res.status(200).json(availableUnwatchedItems);
+    
+  } catch (error) {
+    console.error('Error in getAvailableUnwatchedItems:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};

@@ -10,6 +10,7 @@ router.get('/', tryAuth, itemController.getItems);
 
 router.get('/un_watched_item', tryAuth, ViewItemController.getUnwatchedItems);
 
+router.get('/available_items',tryAuth, ViewItemController.getAvailableUnwatchedItems);
 // Public: search items by categories + keyword (body JSON)
 router.post('/search', tryAuth, ViewItemController.searchByCategoryAndKeyword);
 
