@@ -8,10 +8,10 @@ router.get('/', requireAuth, transactionController.getTransactions);
 
 router.post('/offer', requireAuth, transactionController.createOffer);
 
-router.put('/macthing', requireAuth, transactionController.createOffer);
+router.put('/matching', requireAuth, transactionController.matchOffer);
 
 router.put('/confirm', requireAuth, transactionController.confirmMatch);
 
-router.put('/cancel', requireAuth, transactionController.rejectMatch);
+router.put('/cancel', requireAuth, transactionController.cancelTransaction);
 
-router.put('/reject', requireAuth, transactionController.completeTransaction);
+module.exports = router;

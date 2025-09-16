@@ -35,6 +35,7 @@ exports.createItem = async (req, res) => {
             });
             delete req.body.imageUrl;
         }
+
         
         // Owner is always the token user
         data.ownerEmail = req.user.email;
