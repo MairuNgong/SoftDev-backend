@@ -1,20 +1,29 @@
+// controllers/ItemCatagoryController.js
 const ItemCatagory = require('../models/ItemCatagory');
 const Item = require('../models/Item');
 
-// GET /item-catagory  (?itemId=123)
+/**
+ * GET /item-catagory  (?itemId=123)
+ * Tip on the client: call with ?itemId=<id> right after adding to ensure you see the new row
+ */
 exports.list = async (req, res) => {
     try {
         const { itemId } = req.query;
         const where = {};
         if (itemId) where.itemId = itemId;
-        const rows = await ItemCatagory.findAll({ where, order: [['createdAt', 'DESC']] });
+
+        const rows = await ItemCatagory.findAll({
+            where,
+            order: [['createdAt', 'DESC']] // newest first so "just added" is on top
+        });
+
         return res.json({ data: rows });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
 };
 
-// GET /item-catagory/:id
+/** GET /item-catagory/:id */
 exports.getOne = async (req, res) => {
     try {
         const row = await ItemCatagory.findByPk(req.params.id);
@@ -25,32 +34,41 @@ exports.getOne = async (req, res) => {
     }
 };
 
-// POST /item-catagory
-// body: { itemId, categoryName }
+/**
+ * POST /item-catagory
+ * body: { itemId, categoryName }
+ * Only the item owner can add categories.
+ */
 exports.create = async (req, res) => {
     try {
         const email = req.user?.email;
         if (!email) return res.status(401).json({ error: 'Unauthorized' });
 
         const { itemId, categoryName } = req.body;
-        if (!itemId || !categoryName) {
+        if (!itemId || !categoryName || !String(categoryName).trim()) {
             return res.status(400).json({ error: 'itemId and categoryName are required' });
         }
 
-        // ensure current user owns the item (optional but safer)
         const item = await Item.findByPk(itemId);
         if (!item) return res.status(404).json({ error: 'Item not found' });
-        if (item.ownerEmail !== email) return res.status(403).json({ error: 'Not item owner' });
+        if (item.ownerEmail !== email) {
+            return res.status(403).json({ error: 'Not item owner' });
+        }
 
-        const created = await ItemCatagory.create({ itemId, categoryName });
-        return res.status(201).json({ data: created });
+        const row = await ItemCatagory.create({ itemId, categoryName: String(categoryName).trim() });
+
+        // Return the created row so the UI can append instantly
+        return res.status(201).json({ data: row });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
 };
 
-// PUT /item-catagory/:id
-// body: { categoryName }
+/**
+ * PUT /item-catagory/:id
+ * body: { categoryName }
+ * Only the item owner can update.
+ */
 exports.update = async (req, res) => {
     try {
         const email = req.user?.email;
@@ -59,13 +77,12 @@ exports.update = async (req, res) => {
         const row = await ItemCatagory.findByPk(req.params.id);
         if (!row) return res.status(404).json({ error: 'Not found' });
 
-        // ownership check via the linked item
         const item = await Item.findByPk(row.itemId);
         if (!item) return res.status(404).json({ error: 'Linked item not found' });
         if (item.ownerEmail !== email) return res.status(403).json({ error: 'Not item owner' });
 
         const { categoryName } = req.body;
-        if (categoryName !== undefined) row.categoryName = categoryName;
+        if (categoryName !== undefined) row.categoryName = String(categoryName).trim();
 
         await row.save();
         return res.json({ data: row });
@@ -74,7 +91,10 @@ exports.update = async (req, res) => {
     }
 };
 
-// DELETE /item-catagory/:id
+/**
+ * DELETE /item-catagory/:id
+ * Only the item owner can delete.
+ */
 exports.remove = async (req, res) => {
     try {
         const email = req.user?.email;
