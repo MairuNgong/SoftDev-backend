@@ -24,46 +24,57 @@ function pickPayload(body) {
     return out;
 }
 
+
 /** Normalize categoryName/categoryNames into an array, or null if not provided */
 function extractCategories(body) {
-    const { categoryName, categoryNames } = body || {};
+    const { categoryNames } = body || {};
     if (Array.isArray(categoryNames)) {
         return categoryNames.filter(Boolean).map(s => String(s).trim()).filter(Boolean);
-    }
-    if (typeof categoryName === 'string') {
-        const s = categoryName.trim();
-        return s ? [s] : [];
     }
     return null; // not provided at all
 }
 
-const includeCategories = [
-    { model: ItemCatagory, attributes: ['id', 'categoryName', 'createdAt', 'updatedAt'] }
-];
 
 /** GET /items  (?ownerEmail=&status=) */
 exports.getItems = async (req, res) => {
-    try {
-        const where = {};
-        if (req.query.ownerEmail) where.ownerEmail = req.query.ownerEmail;
-        if (req.query.status) where.status = req.query.status;
+  try {
+    const where = {};
+    where.ownerEmail = req.query.ownerEmail;
 
-        const items = await Item.findAll({
-            where,
-            order: [['createdAt', 'DESC']],
-            include: includeCategories
-        });
+    const items = await Item.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      include: [
+        { model: ItemCatagory, attributes: ['categoryName'] }, 
+        {
+          model: ItemPicture,
+          attributes: ['imageLink'],
+          limit: 1,
+          order: [['createdAt', 'DESC']],
+          separate: true,   // Ensures limit works per item
+        },
+      ],
+    });
 
-        return res.json({ data: items });
-    } catch (err) {
-        return res.status(500).json({ error: err.message });
-    }
+    return res.json({ data: items });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 };
 
 /** GET /items/:id  -> { data, owner } */
 exports.getItemById = async (req, res) => {
     try {
-        const item = await Item.findByPk(req.params.id, { include: includeCategories });
+        const item = await Item.findByPk(req.params.id, { include: [
+          { model: ItemCatagory, attributes: ['categoryName'] }, 
+          {
+            model: ItemPicture,
+            attributes: ['imageLink'],
+            limit: 1,
+            order: [['createdAt', 'DESC']],
+            separate: true,   // Ensures limit works per item
+          },
+        ] });
         if (!item) return res.status(404).json({ error: 'Item not found' });
         const owner = !!(req.user && req.user.email === item.ownerEmail);
         return res.json({ data: item, owner });
@@ -78,10 +89,13 @@ exports.createItem = async (req, res) => {
         const ownerEmail = req.user.email;
         const payload = { ...pickPayload(req.body), ownerEmail };
 
-        // (Optional) attach image from upload middleware if you need it
-        // if (req.file?.cloudinary?.url) {
-        //   payload.images = [req.file.cloudinary.url];
-        // }
+        if (req.body.imageUrl) {
+            await ItemPicture.create({
+                itemId: item.id,
+                imageLink: req.body.imageUrl
+            });
+            delete req.body.imageUrl;
+        }
 
         // 1) Create item
         const item = await Item.create(payload);
@@ -95,7 +109,16 @@ exports.createItem = async (req, res) => {
         }
 
         // 3) IMPORTANT: refetch with include so response shows the just-added categories
-        const fresh = await Item.findByPk(item.id, { include: includeCategories });
+        const fresh = await Item.findByPk(item.id, { include: [
+            { model: ItemCatagory, attributes: ['categoryName'] }, 
+            {
+              model: ItemPicture,
+              attributes: ['imageLink'],
+              limit: 1,
+              order: [['createdAt', 'DESC']],
+              separate: true,   // Ensures limit works per item
+            },
+        ] });
         return res.status(201).json({ data: fresh });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -111,6 +134,13 @@ exports.updateItem = async (req, res) => {
             return res.status(403).json({ error: 'Not the owner' });
         }
 
+        if (req.body.imageUrl) {
+            await ItemPicture.create({
+                itemId: item.id,
+                imageLink: req.body.imageUrl
+            });
+            delete req.body.imageUrl;
+        }
         // Update item fields
         const updates = pickPayload(req.body);
         await item.update(updates);
@@ -127,7 +157,16 @@ exports.updateItem = async (req, res) => {
         }
 
         // IMPORTANT: refetch with include so you immediately see the new categories
-        const fresh = await Item.findByPk(item.id, { include: includeCategories });
+        const fresh = await Item.findByPk(item.id, { include: [
+            { model: ItemCatagory, attributes: ['categoryName'] }, 
+            {
+              model: ItemPicture,
+              attributes: ['imageLink'],
+              limit: 1,
+              order: [['createdAt', 'DESC']],
+              separate: true,   // Ensures limit works per item
+            },
+          ]});
         return res.json({ data: fresh });
     } catch (err) {
         return res.status(500).json({ error: err.message });

@@ -77,7 +77,7 @@ const TradeTransaction = sequelize.define('TradeTransaction', {
         defaultValue: false
     }
 }, {
-    timestamps: true,              // you provided your own dateTime field
+    timestamps: true,              
     tableName: 'TradeTransactions',
     indexes: [
         { fields: ['offerEmail'] },
