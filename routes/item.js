@@ -6,6 +6,7 @@ const { requireAuth, tryAuth } = require('../middleware/auth');
 const { upload, uploadImageToCloudinary } = require('../middleware/cloudinary');
 
 // Public: list items (optionally filter ?ownerEmail=&status=)
+// GET /items?ownerEmail=wattanun42@gmail.com
 router.get('/', tryAuth, itemController.getItems);
 
 router.get('/un_watched_item', tryAuth, ViewItemController.getUnwatchedItems);

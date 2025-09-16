@@ -1,5 +1,5 @@
 const User = require('../models/User');
-
+const InterestedCatagory = require('../models/InterestedCatagory');
 // exports.getAllUsers = async (req, res) => {
 //   try {
 //     const users = await User.findAll();
@@ -8,6 +8,15 @@ const User = require('../models/User');
 //     res.status(500).json({ error: err.message });
 //   }
 // };
+
+function extractCategories(body) {
+    const { categoryNames } = body || {};
+    if (Array.isArray(categoryNames)) {
+        return categoryNames.filter(Boolean).map(s => String(s).trim()).filter(Boolean);
+    }
+    
+    return null; // not provided at all
+}
 
 exports.getUserByEmail = async (req, res) => {
   try {
@@ -31,7 +40,22 @@ exports.updateUser = async (req, res) => {
     }
 
     await user.update(req.body);
-    res.json(user);
+
+    const cats = extractCategories(req.body);
+    if (Array.isArray(cats) && cats.length > 0) {
+      // Optional: clear old categories first if you don’t want duplicates
+      await InterestedCatagory.destroy({ where: { email: user.email } });
+
+      await InterestedCatagory.bulkCreate(
+        cats.map(name => ({ email: user.email, categoryName: name }))
+      );
+    }
+
+    const updatedUser = await User.findByPk(user.email, {
+      include: { model: InterestedCatagory, attributes: ['categoryName'] },
+    });
+
+    res.json(updatedUser);   
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
