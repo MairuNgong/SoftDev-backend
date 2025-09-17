@@ -86,8 +86,8 @@ exports.getItemById = async (req, res) => {
         
         if (!item) return res.status(404).json({ error: 'Item not found' });
         item = item.get({ plain: true });
-        item.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
-        item.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
+        item.ItemCategories = item.ItemCategories.map(c => c.categoryName);
+        item.ItemPictures = item.ItemPictures.map(p => p.imageLink);
         const owner = !!(req.user && req.user.email === item.ownerEmail);
         return res.json({ data: item, owner });
     } catch (err) {
@@ -136,8 +136,8 @@ exports.createItem = async (req, res) => {
         item = fresh.get({ plain: true });
 
         // map categories to just strings
-        item.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
-        item.ItemPictures = plain.ItemPictures.map(c => c.imageLink);
+        item.ItemCategories = item.ItemCategories.map(c => c.categoryName);
+        item.ItemPictures = item.ItemPictures.map(c => c.imageLink);
         return res.status(201).json({ data: item });
     } catch (err) {
         return res.status(500).json({ error: err.message });
@@ -187,8 +187,8 @@ exports.updateItem = async (req, res) => {
             },
           ]});
         item = fresh.get({ plain: true });
-        item.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
-        item.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
+        item.ItemCategories = item.ItemCategories.map(c => c.categoryName);
+        item.ItemPictures = item.ItemPictures.map(p => p.imageLink);
         return res.json({ data: item });
     } catch (err) {
         return res.status(500).json({ error: err.message });

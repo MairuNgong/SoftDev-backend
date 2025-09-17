@@ -136,10 +136,13 @@ exports.createOffer = async (req, res) => {
 exports.matchOffer = async (req, res) => {
   try {
     const { transactionId } = req.body;
+    const user = req.user.email;
     const transaction = await TradeTransaction.findByPk(transactionId);
     if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
-
-    transaction.status = 'matched';
+    if (transaction.accepterEmail !== user) {
+      return res.status(403).json({ error: 'You cant accept this transaction' });
+    }
+    if(transaction.status == 'Offering') transaction.status = 'Matching';
     await transaction.save();
     res.json(transaction);
   } catch (err) {
@@ -153,10 +156,21 @@ exports.matchOffer = async (req, res) => {
 exports.confirmMatch = async (req, res) => {
   try {
     const { transactionId } = req.body;
+    const user = req.user.email;
     const transaction = await TradeTransaction.findByPk(transactionId);
     if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
 
-    transaction.status = 'confirmed';
+    // Check who is confirming
+    if (transaction.offerEmail === user) {
+      transaction.isOffererConfirm = true;
+    } else if (transaction.accepterEmail === user) {
+      transaction.isAccepterConfirm = true;
+    } else {
+      return res.status(403).json({ error: 'You are not part of this transaction' });
+    }
+    if (transaction.isOffererConfirm && transaction.isAccepterConfirm) {
+      transaction.status = 'Complete';
+    }
     await transaction.save();
     res.json(transaction);
   } catch (err) {
@@ -170,10 +184,14 @@ exports.confirmMatch = async (req, res) => {
 exports.cancelTransaction = async (req, res) => {
   try {
     const { transactionId } = req.body;
+    const user = req.user.email;
     const transaction = await TradeTransaction.findByPk(transactionId);
     if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+    if (transaction.offerEmail !== user && transaction.accepterEmail !== user) {
+      return res.status(403).json({ error: 'You are not part of this transaction' });
+    }
 
-    transaction.status = 'cancelled';
+    if(transaction.status != 'Complete')transaction.status = 'cancelled';
     await transaction.save();
     res.json(transaction);
   } catch (err) {
