@@ -9,6 +9,7 @@ const Message = require('./Message');
 const Rating = require('./Rating');
 const TradeItem = require('./TradeItem');
 const WatchedItem = require('./WatchedItem');
+const TradeTransaction = require('./TradeTransaction');
 
 module.exports = {
     User,
@@ -20,5 +21,6 @@ module.exports = {
     Message,
     Rating,
     TradeItem,
-    WatchedItem
+    WatchedItem,
+    TradeTransaction
 };

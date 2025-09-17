@@ -1,15 +1,54 @@
-const TradeTransaction = require('../models/TradeTransaction');
-const User = require('../models/User');
-const Item = require('../models/Item');
-const TradeItem = require('../models/TradeItem');
+const { Op } = require('sequelize');
+const { TradeTransaction, TradeItem, Item,ItemCatagory,ItemPicture } = require('../models');
 
 exports.getTransactions = async (req, res) => {
   try {
-    const transactions = await TradeTransaction.findAll({
-      where: { userEmail: req.user.email },
-      include: TradeItem
+    let transactions = await TradeTransaction.findAll({
+      where: {
+        [Op.or]: [
+          { offerEmail: req.user.email },
+          { accepterEmail: req.user.email }
+        ]
+      },
+      include: [
+        {
+          model: TradeItem,
+          include: 
+            {
+              model: Item,
+              include: [
+                { model: ItemCatagory, attributes: ['categoryName'] }, 
+                {
+                  model: ItemPicture,
+                  attributes: ['imageLink'],
+                  limit: 1,
+                  order: [['createdAt', 'DESC']],
+                  separate: true,   // Ensures limit works per item
+                },
+              ]
+            }
+          
+          
+        }
+      ],
+      order: [['status', 'ASC']] 
     });
-    res.json(transactions);
+
+    
+    transactions = transactions.map(t => t.get({ plain: true }));
+    transactions.forEach(t => {
+      t.TradeItems.forEach(tradeItem => {
+        let item = tradeItem.Item;
+        if (item && item.ItemCategories) {
+          item.ItemCategories = item.ItemCategories.map(c => c.categoryName);
+        }
+        if (item && item.ItemPictures) {
+          item.ItemPictures = item.ItemPictures.map(p => p.imageLink);
+        }
+      });
+    });
+
+    res.json({transactions});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
