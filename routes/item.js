@@ -6,10 +6,12 @@ const { requireAuth, tryAuth } = require('../middleware/auth');
 const { upload, uploadImageToCloudinary } = require('../middleware/cloudinary');
 
 // Public: list items (optionally filter ?ownerEmail=&status=)
+// GET /items?ownerEmail=wattanun42@gmail.com
 router.get('/', tryAuth, itemController.getItems);
 
 router.get('/un_watched_item', tryAuth, ViewItemController.getUnwatchedItems);
 
+router.get('/available_items',tryAuth, ViewItemController.getAvailableUnwatchedItems);
 // Public: search items by categories + keyword (body JSON)
 router.get('/search', tryAuth, ViewItemController.searchByCategoryAndKeyword);
 
