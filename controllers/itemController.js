@@ -41,7 +41,7 @@ exports.getItems = async (req, res) => {
     const where = {};
     where.ownerEmail = req.query.ownerEmail;
 
-    const items = await Item.findAll({
+    let items = await Item.findAll({
       where,
       order: [['createdAt', 'DESC']],
       include: [
@@ -56,13 +56,13 @@ exports.getItems = async (req, res) => {
       ],
     });
 
-    const plainItems = items.map(item => {
+    items = items.map(item => {
       const plain = item.get({ plain: true });
       plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
       plain.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
       return plain;
     });
-    return res.json({ data: plainItems });
+    return res.json({ data: items });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -71,7 +71,7 @@ exports.getItems = async (req, res) => {
 /** GET /items/:id  -> { data, owner } */
 exports.getItemById = async (req, res) => {
     try {
-        const item = await Item.findByPk(req.params.id, { include: [
+        let item = await Item.findByPk(req.params.id, { include: [
           { model: ItemCatagory, attributes: ['categoryName'] }, 
           {
             model: ItemPicture,
@@ -83,11 +83,11 @@ exports.getItemById = async (req, res) => {
         ] });
         
         if (!item) return res.status(404).json({ error: 'Item not found' });
-        const plain = item.get({ plain: true });
-        plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
-        plain.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
+        item = item.get({ plain: true });
+        item.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
+        item.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
         const owner = !!(req.user && req.user.email === item.ownerEmail);
-        return res.json({ data: plain, owner });
+        return res.json({ data: item, owner });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
@@ -108,7 +108,7 @@ exports.createItem = async (req, res) => {
         }
 
         // 1) Create item
-        const item = await Item.create(payload);
+        let item = await Item.create(payload);
 
         // 2) Create categories if provided
         const cats = extractCategories(req.body);
@@ -131,12 +131,12 @@ exports.createItem = async (req, res) => {
           ] 
         });
 
-        const plain = fresh.get({ plain: true });
+        item = fresh.get({ plain: true });
 
         // map categories to just strings
-        plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
-        plain.ItemPictures = plain.ItemPictures.map(c => c.imageLink);
-        return res.status(201).json({ data: plain });
+        item.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
+        item.ItemPictures = plain.ItemPictures.map(c => c.imageLink);
+        return res.status(201).json({ data: item });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
@@ -145,7 +145,7 @@ exports.createItem = async (req, res) => {
 /** PUT /items/:id — replaces categories only if categoryName/Names provided */
 exports.updateItem = async (req, res) => {
     try {
-        const item = await Item.findByPk(req.params.id);
+        let item = await Item.findByPk(req.params.id);
         if (!item) return res.status(404).json({ error: 'Item not found' });
         if (!req.user || item.ownerEmail !== req.user.email) {
             return res.status(403).json({ error: 'Not the owner' });
@@ -184,10 +184,10 @@ exports.updateItem = async (req, res) => {
               separate: true,   // Ensures limit works per item
             },
           ]});
-        const plain = fresh.get({ plain: true });
-        plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
-        plain.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
-        return res.json({ data: plain });
+        item = fresh.get({ plain: true });
+        item.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
+        item.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
+        return res.json({ data: item });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }

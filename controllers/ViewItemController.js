@@ -99,13 +99,13 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
       separate: true,   // Ensures limit works per item
     });
 
-    const items = await Item.findAll({
+    let items = await Item.findAll({
       where: whereItem,
       include,
       distinct: true,
       order: [['createdAt', 'DESC']]
     });
-    const plainItems = items.map(item => {
+    items = items.map(item => {
       const plain = item.get({ plain: true });
       plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
       plain.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
@@ -113,7 +113,7 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
     });
 
     // NOTE: respond with { items } to match your existing route contract
-    return res.status(200).json({ plainItems });
+    return res.status(200).json({ items });
   } catch (err) {
     console.error('searchByCategoryAndKeyword error:', err);
     return res.status(500).json({ error: 'Internal server error' });
