@@ -39,7 +39,9 @@ function extractCategories(body) {
 exports.getItems = async (req, res) => {
   try {
     const where = {};
-    where.ownerEmail = req.query.ownerEmail;
+    if (req.query.ownerEmail) {
+      where.ownerEmail = req.query.ownerEmail;
+    }
 
     let items = await Item.findAll({
       where,
