@@ -1,7 +1,7 @@
 // controllers/ViewItemController.js
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
-const { User, Item, ItemCatagory } = require('../models');
+const { User, Item, ItemCatagory,ItemPicture } = require('../models');
 
 /**
  * @desc Get all unwatched items for a specific user (fallback: random items)
@@ -64,8 +64,9 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
     if (keyword && String(keyword).trim()) {
       const k = String(keyword).trim();
       whereItem[Op.or] = [
-        { name: { [Op.iLike]: `%${k}%` } },
-        { description: { [Op.iLike]: `%${k}%` } }
+        { name: { [Op.iLike]: `%${k}%` } }
+        // ,
+        // { description: { [Op.iLike]: `%${k}%` } }
       ];
     }
 
@@ -79,17 +80,24 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
         .filter(Boolean);
       include.push({
         model: ItemCatagory,
-        attributes: ['id', 'categoryName'],
+        attributes: ['categoryName'],
         where: { categoryName: { [Op.in]: list } },
         required: true
       });
     } else {
       include.push({
         model: ItemCatagory,
-        attributes: ['id', 'categoryName'],
+        attributes: ['categoryName'],
         required: false
       });
     }
+    include.push({
+      model: ItemPicture,
+      attributes: ['imageLink'],
+      limit: 1,
+      order: [['createdAt', 'DESC']],
+      separate: true,   // Ensures limit works per item
+    });
 
     const items = await Item.findAll({
       where: whereItem,
@@ -97,9 +105,15 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
       distinct: true,
       order: [['createdAt', 'DESC']]
     });
+    const plainItems = items.map(item => {
+      const plain = item.get({ plain: true });
+      plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
+      plain.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
+      return plain;
+    });
 
     // NOTE: respond with { items } to match your existing route contract
-    return res.status(200).json({ items });
+    return res.status(200).json({ plainItems });
   } catch (err) {
     console.error('searchByCategoryAndKeyword error:', err);
     return res.status(500).json({ error: 'Internal server error' });

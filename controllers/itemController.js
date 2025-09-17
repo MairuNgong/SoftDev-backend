@@ -56,7 +56,13 @@ exports.getItems = async (req, res) => {
       ],
     });
 
-    return res.json({ data: items });
+    const plainItems = items.map(item => {
+      const plain = item.get({ plain: true });
+      plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
+      plain.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
+      return plain;
+    });
+    return res.json({ data: plainItems });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -75,9 +81,13 @@ exports.getItemById = async (req, res) => {
             separate: true,   // Ensures limit works per item
           },
         ] });
+        
         if (!item) return res.status(404).json({ error: 'Item not found' });
+        const plain = item.get({ plain: true });
+        plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
+        plain.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
         const owner = !!(req.user && req.user.email === item.ownerEmail);
-        return res.json({ data: item, owner });
+        return res.json({ data: plain, owner });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
@@ -108,18 +118,25 @@ exports.createItem = async (req, res) => {
             );
         }
 
-        // 3) IMPORTANT: refetch with include so response shows the just-added categories
-        const fresh = await Item.findByPk(item.id, { include: [
+        const fresh = await Item.findByPk(item.id, { 
+          include: [
             { model: ItemCatagory, attributes: ['categoryName'] }, 
             {
               model: ItemPicture,
               attributes: ['imageLink'],
               limit: 1,
               order: [['createdAt', 'DESC']],
-              separate: true,   // Ensures limit works per item
+              separate: true,
             },
-        ] });
-        return res.status(201).json({ data: fresh });
+          ] 
+        });
+
+        const plain = fresh.get({ plain: true });
+
+        // map categories to just strings
+        plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
+        plain.ItemPictures = plain.ItemPictures.map(c => c.imageLink);
+        return res.status(201).json({ data: plain });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
@@ -167,7 +184,10 @@ exports.updateItem = async (req, res) => {
               separate: true,   // Ensures limit works per item
             },
           ]});
-        return res.json({ data: fresh });
+        const plain = fresh.get({ plain: true });
+        plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
+        plain.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
+        return res.json({ data: plain });
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }

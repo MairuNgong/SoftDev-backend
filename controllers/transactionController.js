@@ -7,7 +7,7 @@ exports.getTransactions = async (req, res) => {
   try {
     const transactions = await TradeTransaction.findAll({
       where: { userEmail: req.user.email },
-      include: [TradeItem, Item]
+      include: TradeItem
     });
     res.json(transactions);
   } catch (err) {

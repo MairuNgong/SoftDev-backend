@@ -11,7 +11,7 @@ router.get('/', tryAuth, itemController.getItems);
 router.get('/un_watched_item', tryAuth, ViewItemController.getUnwatchedItems);
 
 // Public: search items by categories + keyword (body JSON)
-router.post('/search', tryAuth, ViewItemController.searchByCategoryAndKeyword);
+router.get('/search', tryAuth, ViewItemController.searchByCategoryAndKeyword);
 
 // Public: get one item; responds with { item, owner: boolean }
 router.get('/:id', tryAuth, itemController.getItemById);

@@ -54,8 +54,9 @@ exports.updateUser = async (req, res) => {
     const updatedUser = await User.findByPk(user.email, {
       include: { model: InterestedCatagory, attributes: ['categoryName'] },
     });
-
-    res.json(updatedUser);   
+    const plain = updatedUser.get({ plain: true });
+    plain.InterestedCategories = plain.InterestedCategories.map(c => c.categoryName);
+    res.json(plain);   
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
