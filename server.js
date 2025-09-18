@@ -10,6 +10,7 @@ const itemRoutes = require('./routes/item');
 const transactionRoutes = require('./routes/transaction');
 const interestedCatagoryRoutes = require('./routes/interestedCatagory');
 const itemCatagoryRoutes = require('./routes/itemCatagory');
+const watchedRoutes = require('./routes/watched');
 
 dotenv.config();
 const app = express();
@@ -35,6 +36,7 @@ app.use('/items', itemRoutes);
 app.use('/interested-catagory', interestedCatagoryRoutes);
 app.use('/item-catagory', itemCatagoryRoutes);
 app.use('/transactions', transactionRoutes);
+app.use('/watched', watchedRoutes);
 
 const PORT = process.env.INSIDE_PORT || 5000;
 app.listen(PORT, async () => {
