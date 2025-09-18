@@ -7,15 +7,16 @@ const { upload, uploadImageToCloudinary } = require('../middleware/cloudinary');
 
 router.get('/', tryAuth, itemController.getItems);
 
-router.get('/:id', tryAuth, itemController.getItemById);
-
 router.get('/un_watched_item', tryAuth, ViewItemController.getUnwatchedItems);
 
 router.get('/available_items', tryAuth, ViewItemController.getAvailableUnwatchedItems);
 
+router.get('/:id', tryAuth, itemController.getItemById);
+
 router.post('/search', tryAuth, ViewItemController.searchByCategoryAndKeyword);
 
 router.post('/', requireAuth, upload.single('ItemPicture'), uploadImageToCloudinary('Softdev/Item'), itemController.createItem);
+
 
 router.put('/:id', requireAuth, upload.single('ItemPicture'), uploadImageToCloudinary('Softdev/Item'), itemController.updateItem);
 

@@ -98,9 +98,8 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
 
 exports.getAvailableUnwatchedItems = async (req, res) => {
   try {
-    const { email } = req.query;
 
-    if (!email) {
+    if (!req.user || !req.user.email) {
       const randomItems = await Item.findAll({
         where: {
           id: {
@@ -118,7 +117,7 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
       return res.status(200).json(randomItems);
     }
 
-    const user = await User.findByPk(email);
+    const user = await User.findByPk(req.user.email);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -140,14 +139,29 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
           )`)
             }
           },
-          { ownerEmail: { [Op.ne]: email } }
+          { ownerEmail: { [Op.ne]: req.user.email} }
         ]
       },
       order: [['createdAt', 'DESC']],
       limit: 10
     });
-
-    return res.status(200).json(availableUnwatchedItems);
+    let items = availableUnwatchedItems;
+    items = items.map(item => {
+      const plain = item.get({ plain: true });
+      const cats = plain.ItemCategories || plain.ItemCatagories || [];
+      const pics = plain.ItemPictures || [];
+      return {
+        id: plain.id,
+        name: plain.name,
+        priceRange: plain.priceRange,
+        ownerEmail: plain.ownerEmail,
+        createdAt: plain.createdAt,
+        updatedAt: plain.updatedAt,
+        ItemCategories: Array.isArray(cats) ? cats.map(c => c.categoryName) : [],
+        ItemPictures: Array.isArray(pics) ? pics.map(p => p.imageLink) : []
+      };
+    });
+    return res.status(200).json(items);
   } catch (error) {
     console.error('Error in getAvailableUnwatchedItems:', error);
     return res.status(500).json({ error: 'Internal server error' });

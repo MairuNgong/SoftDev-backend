@@ -28,6 +28,7 @@ const Rating = sequelize.define('Rating', {
         onDelete: 'CASCADE',
         validate: { isEmail: true }
     },
+      
     score: {
         type: DataTypes.FLOAT, // rating score, e.g., 1–5
         allowNull: false,
