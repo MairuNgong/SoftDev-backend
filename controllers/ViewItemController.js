@@ -1,45 +1,14 @@
 const { Op } = require('sequelize');
+
 const sequelize = require('../config/db');
 const { User, Item, ItemCatagory, ItemPicture } = require('../models');
 
-<<<<<<< HEAD
 /**
  * @desc Get all unwatched items for a specific user (fallback: random items)
  * @route GET /items/un_watched_item
  * @access Public (tryAuth)
  */
 
-=======
-exports.getUnwatchedItems = async (req, res) => {
-  try {
-    if (!req.user || !req.user.email) {
-      const randomItems = await Item.findAll({
-        order: [[sequelize.fn('RANDOM')]],
-        limit: 10,
-        include: [{ model: ItemCatagory, attributes: ['id', 'categoryName'] }]
-      });
-      return res.json(randomItems);
-    }
-
-    const user = await User.findByPk(req.user.email);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const watchedItems = await user.getWatchedItems({ joinTableAttributes: [] });
-    const watchedItemIds = watchedItems.map(i => i.id);
-
-    const unwatchedItems = await Item.findAll({
-      where: { id: { [Op.notIn]: watchedItemIds } },
-      order: [['createdAt', 'DESC']],
-      include: [{ model: ItemCatagory, attributes: ['id', 'categoryName'] }]
-    });
-
-    return res.json(unwatchedItems);
-  } catch (error) {
-    console.error('Error fetching unwatched items:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-};
->>>>>>> 062c8eb15c878e4e651b70b75488a8109bb24852
 
 exports.searchByCategoryAndKeyword = async (req, res) => {
   try {
@@ -107,14 +76,16 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
 
 exports.getAvailableUnwatchedItems = async (req, res) => {
   try {
-    const { email } = req.query;
+    const { email } = req.query; // Assuming email comes from query parameters
 
+    // If no email provided, return random available items
     if (!email) {
       const randomItems = await Item.findAll({
         where: {
+          // Exclude items that are in 'Matching' or 'Complete' trades
           id: {
             [Op.notIn]: sequelize.literal(`(
-              SELECT DISTINCT ti."itemId"
+              SELECT DISTINCT ti."itemId" 
               FROM "TradeItems" ti
               JOIN "TradeTransactions" tt ON ti."transactionId" = tt.id
               WHERE tt.status IN ('Matching', 'Complete')
@@ -127,38 +98,45 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
       return res.status(200).json(randomItems);
     }
 
+    // Find user by email
     const user = await User.findByPk(email);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Get watched items from database
     const watchedItems = await user.getWatchedItems({ joinTableAttributes: [] });
     const watchedItemIds = watchedItems.map(i => i.id);
 
+    // Find items that are: 
+    // 1. NOT watched by user
+    // 2. NOT in active trades  
+    // 3. NOT owned by the current user
     const availableUnwatchedItems = await Item.findAll({
       where: {
         [Op.and]: [
+          // Exclude watched items
           { id: { [Op.notIn]: watchedItemIds } },
-          {
-            id: {
-              [Op.notIn]: sequelize.literal(`(
-            SELECT DISTINCT ti."itemId"
+          // Exclude items in active trades
+          { id: { [Op.notIn]: sequelize.literal(`(
+            SELECT DISTINCT ti."itemId" 
             FROM "TradeItems" ti
             JOIN "TradeTransactions" tt ON ti."transactionId" = tt.id
             WHERE tt.status IN ('Matching', 'Complete')
-          )`)
-            }
-          },
+          )`) } },
+          // Exclude user's own items
           { ownerEmail: { [Op.ne]: email } }
         ]
       },
       order: [['createdAt', 'DESC']],
-      limit: 10
+      limit: 10 // Added limit to return only 10 items
     });
 
     return res.status(200).json(availableUnwatchedItems);
+    
   } catch (error) {
     console.error('Error in getAvailableUnwatchedItems:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
