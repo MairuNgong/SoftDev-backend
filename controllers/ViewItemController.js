@@ -8,41 +8,7 @@ const { User, Item, ItemCatagory } = require('../models');
  * @route GET /items/un_watched_item
  * @access Public (tryAuth)
  */
-exports.getUnwatchedItems = async (req, res) => {
-  try {
-    // If not logged in, just return random items
-    if (!req.user || !req.user.email) {
-      const randomItems = await Item.findAll({
-        order: [[sequelize.fn('RANDOM')]],
-        limit: 10,
-        include: [
-          { model: ItemCatagory, attributes: ['id', 'categoryName'] }
-        ]
-      });
-      return res.json(randomItems);
-    }
 
-    // Logged-in: exclude items the user has already watched
-    const user = await User.findByPk(req.user.email);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const watchedItems = await user.getWatchedItems({ joinTableAttributes: [] });
-    const watchedItemIds = watchedItems.map(i => i.id);
-
-    const unwatchedItems = await Item.findAll({
-      where: { id: { [Op.notIn]: watchedItemIds } },
-      order: [['createdAt', 'DESC']],
-      include: [
-        { model: ItemCatagory, attributes: ['id', 'categoryName'] }
-      ]
-    });
-
-    return res.json(unwatchedItems);
-  } catch (error) {
-    console.error('Error fetching unwatched items:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
-};
 
 /**
  * @desc Search items by categories + keyword (both optional)
