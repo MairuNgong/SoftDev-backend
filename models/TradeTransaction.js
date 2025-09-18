@@ -47,7 +47,7 @@ const TradeTransaction = sequelize.define('TradeTransaction', {
         allowNull: true,
         validate: { min: 0 }
     },
-
+    
     requestMoney: {
         type: DataTypes.DECIMAL(12, 2),
         allowNull: true,
