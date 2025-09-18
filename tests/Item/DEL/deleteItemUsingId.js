@@ -1,29 +1,41 @@
+// tests/Item/DELETE/deleteItem.js
+require('dotenv').config();
 const axios = require('axios');
 
-const BASE_URL = 'http://localhost:5000';
-const AUTH_TOKEN = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6IndhdHRhbnVuNDJAZ21haWwuY29tIiwibmFtZSI6IldhdHRhbnVuIFRlZXJhdGFuYXBvbmciLCJpYXQiOjE3NTc4NTc5MTEsImV4cCI6MTc1OTE1MzkxMX0.VgkTWjYce6rVQ0LzW9gWo8DiWNzJEo-Rpih95VjkaaE';
-const COOKIE = 'connect.sid=s%3Avruu2d7sOW7Dh13hRrlaJECha0NWmZgs.%2BXNld%2B8QhCSS385ZqO5KnuhBm31gefwWQWagUq%2BwauI';
+// Secrets / env-config (keep these in .env)
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
+const AUTH_TOKEN = process.env.AUTH_TOKEN;   // e.g., "Bearer <jwt>"
+const COOKIE = process.env.COOKIE;           // e.g., "connect.sid=..."
 
-const ITEM_ID = '17';
+if (!BASE_URL) throw new Error('Missing BASE_URL in .env');
 
-const config = {
-    method: 'delete',
-    maxBodyLength: Infinity,
-    url: `${BASE_URL}/items/${ITEM_ID}`,
+// Fixture (ok to hard-code)
+const ITEM_ID = '28'; 
+
+const http = axios.create({
+    baseURL: BASE_URL,
     headers: {
-        'Authorization': AUTH_TOKEN,
-        'Cookie': COOKIE
-    }
-};
+        ...(AUTH_TOKEN ? { Authorization: AUTH_TOKEN } : {}),
+        ...(COOKIE ? { Cookie: COOKIE } : {}),
+    },
+    maxBodyLength: Infinity,
+});
 
-axios.request(config)
-    .then((response) => {
-        console.dir(response.data, { depth: null, colors: true });
-    })
-    .catch((error) => {
-        if (error.response) {
-            console.error("Error:", error.response.status, error.response.data);
-        } else {
-            console.error("Error:", error.message);
+(async () => {
+    try {
+        const res = await http.delete(`/items/${ITEM_ID}`);
+        console.dir(res.data, { depth: null, colors: true });
+
+        // Optional: show a tiny success summary if API returns nothing fancy
+        if (!res?.data || Object.keys(res.data).length === 0) {
+            console.log(`\nDeleted item ${ITEM_ID} successfully (empty body).`);
         }
-    });
+    } catch (error) {
+        if (error.response) {
+            console.error('Error:', error.response.status, error.response.data);
+        } else {
+            console.error('Error:', error.message);
+        }
+        process.exitCode = 1;
+    }
+})();

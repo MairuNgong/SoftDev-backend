@@ -1,60 +1,73 @@
+// tests/Item/PUT/updateItem.js
+require('dotenv').config();
 const axios = require('axios');
 
-const BASE_URL = 'http://localhost:5000';
-const AUTH_TOKEN = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6IndhdHRhbnVuNDJAZ21haWwuY29tIiwibmFtZSI6IldhdHRhbnVuIFRlZXJhdGFuYXBvbmciLCJpYXQiOjE3NTc4NTc5MTEsImV4cCI6MTc1OTE1MzkxMX0.VgkTWjYce6rVQ0LzW9gWo8DiWNzJEo-Rpih95VjkaaE';
-const COOKIE = 'connect.sid=s%3Avruu2d7sOW7Dh13hRrlaJECha0NWmZgs.%2BXNld%2B8QhCSS385ZqO5KnuhBm31gefwWQWagUq%2BwauI';
+// Secrets / env-config (keep these in .env)
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
+const AUTH_TOKEN = process.env.AUTH_TOKEN;   // e.g., "Bearer <jwt>"
+const COOKIE = process.env.COOKIE;           // e.g., "connect.sid=..."
 
-const ITEM_ID = '17';
+// Fixture (ok to hard-code)
+const ITEM_ID = '14'; 
 
-const body = {
-    name: "samsung 17",
-    priceRange: "30000-35000",
-    description: "Lightly used iPhone 14 Pro, 128GB, Deep Purple. Comes with box and charger.",
-    categoryNames: [
-        "Electronics",
-        "Mobile Phone"
-    ]
-};
+if (!BASE_URL) throw new Error('Missing BASE_URL in .env');
 
-const config = {
-    method: 'put',
-    maxBodyLength: Infinity,
-    url: `${BASE_URL}/items/${ITEM_ID}`,
+const http = axios.create({
+    baseURL: BASE_URL,
     headers: {
         'Content-Type': 'application/json',
-        'Authorization': AUTH_TOKEN,
-        'Cookie': COOKIE
+        ...(AUTH_TOKEN ? { Authorization: AUTH_TOKEN } : {}),
+        ...(COOKIE ? { Cookie: COOKIE } : {}),
     },
-    data: body
+    maxBodyLength: Infinity,
+});
+
+// Your update payload
+const body = {
+    name: 'samsung 17',
+    priceRange: '30000-35000',
+    description:
+        'Lightly used iPhone 14 Pro, 128GB, Deep Purple. Comes with box and charger.',
+    categoryNames: ['Electronics', 'Mobile Phone'],
 };
 
-axios.request(config)
-    .then((response) => {
-        console.dir(response.data, { depth: null, colors: true });
+(async () => {
+    try {
+        const res = await http.put(`/items/${ITEM_ID}`, body);
+        console.dir(res.data, { depth: null, colors: true });
 
-        const items = Array.isArray(response.data)
-            ? response.data
-            : response.data.data || [response.data];
+        // Normalize {data: {...}} | {data: [...]} | {...}
+        const payload = res?.data;
+        let rows;
+        if (Array.isArray(payload)) rows = payload;
+        else if (Array.isArray(payload?.data)) rows = payload.data;
+        else if (payload?.data) rows = [payload.data];
+        else rows = [payload];
 
-        if (Array.isArray(items)) {
-            console.log("\nTable View:");
+        if (rows?.length) {
+            console.log('\nTable View:');
             console.table(
-                items.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    priceRange: item.priceRange,
-                    owner: item.ownerEmail,
-                    categories: Array.isArray(item.ItemCategories)
-                        ? item.ItemCategories.map(c => c.categoryName).join(", ")
-                        : "—"
+                rows.map((item) => ({
+                    id: item?.id,
+                    name: item?.name,
+                    priceRange: item?.priceRange,
+                    owner: item?.ownerEmail,
+                    categories: Array.isArray(item?.ItemCategories)
+                        ? item.ItemCategories
+                            .map((c) => (typeof c === 'string' ? c : c.categoryName))
+                            .join(', ')
+                        : Array.isArray(item?.categoryNames)
+                            ? item.categoryNames.join(', ')
+                            : '—',
                 }))
             );
         }
-    })
-    .catch((error) => {
+    } catch (error) {
         if (error.response) {
-            console.error("Error:", error.response.status, error.response.data);
+            console.error('Error:', error.response.status, error.response.data);
         } else {
-            console.error("Error:", error.message);
+            console.error('Error:', error.message);
         }
-    });
+        process.exitCode = 1;
+    }
+})();

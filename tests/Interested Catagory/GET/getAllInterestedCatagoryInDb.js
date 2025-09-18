@@ -1,38 +1,69 @@
+// tests/Interested Category/GET/getAllInterestedCategory.js
+require('dotenv').config();
 const axios = require('axios');
 
-const BASE_URL = 'http://localhost:5000';
-const AUTH_TOKEN = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6IndhdHRhbnVuNDJAZ21haWwuY29tIiwibmFtZSI6IldhdHRhbnVuIFRlZXJhdGFuYXBvbmciLCJpYXQiOjE3NTc4NTc5MTEsImV4cCI6MTc1OTE1MzkxMX0.VgkTWjYce6rVQ0LzW9gWo8DiWNzJEo-Rpih95VjkaaE';
-const COOKIE = 'connect.sid=s%3Avruu2d7sOW7Dh13hRrlaJECha0NWmZgs.%2BXNld%2B8QhCSS385ZqO5KnuhBm31gefwWQWagUq%2BwauI';
+// Secrets / env-config
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
+const AUTH_TOKEN = process.env.AUTH_TOKEN;   // e.g., "Bearer <jwt>"
+const COOKIE = process.env.COOKIE;           // e.g., "connect.sid=..."
 
-const config = {
-    method: 'get',
-    maxBodyLength: Infinity,
-    url: `${BASE_URL}/interested-catagory`,
+if (!BASE_URL) throw new Error('Missing BASE_URL in .env');
+
+const http = axios.create({
+    baseURL: BASE_URL,
     headers: {
-        'Authorization': AUTH_TOKEN,
-        'Cookie': COOKIE
-    }
-};
+        ...(AUTH_TOKEN ? { Authorization: AUTH_TOKEN } : {}),
+        ...(COOKIE ? { Cookie: COOKIE } : {}),
+    },
+    maxBodyLength: Infinity,
+});
 
-axios.request(config)
-    .then((response) => {
-        console.dir(response.data, { depth: null, colors: true });
+(async () => {
+    try {
+        // Try your existing route first, then a likely-corrected spelling.
+        let res;
+        try {
+            res = await http.get('/interested-catagory');
+        } catch (e) {
+            if (e?.response?.status === 404) {
+                res = await http.get('/interested-category');
+            } else {
+                throw e;
+            }
+        }
 
-        if (response.data && Array.isArray(response.data.data)) {
-            console.log("\nTable View:");
+        console.dir(res.data, { depth: null, colors: true });
+
+        const rows = Array.isArray(res.data)
+            ? res.data
+            : Array.isArray(res?.data?.data)
+                ? res.data.data
+                : res?.data
+                    ? [res.data]
+                    : [];
+
+        if (rows.length) {
+            console.log('\nTable View:');
             console.table(
-                response.data.data.map(row => ({
+                rows.map((row) => ({
                     id: row.id,
-                    email: row.email,
-                    category: row.categoryName
+                    email: row.email || row.ownerEmail || '—',
+                    category:
+                        row.categoryName ||
+                        (Array.isArray(row.ItemCategories)
+                            ? row.ItemCategories
+                                .map((c) => (typeof c === 'string' ? c : c.categoryName))
+                                .join(', ')
+                            : '—'),
                 }))
             );
         }
-    })
-    .catch((error) => {
+    } catch (error) {
         if (error.response) {
-            console.error("Error:", error.response.status, error.response.data);
+            console.error('Error:', error.response.status, error.response.data);
         } else {
-            console.error("Error:", error.message);
+            console.error('Error:', error.message);
         }
-    });
+        process.exitCode = 1;
+    }
+})();
