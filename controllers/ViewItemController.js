@@ -169,10 +169,10 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
     }
 
     // Find user by email
-    const user = await User.findByPk(email);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+  const user = await User.findOne({ where: { email: req.user.email } });
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
 
     // Get watched items from database
     const watchedItems = await user.getWatchedItems({ joinTableAttributes: [] });
@@ -187,16 +187,7 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
         [Op.and]: [
           // Exclude watched items
           { id: { [Op.notIn]: watchedItemIds } },
-          {
-            id: {
-              [Op.notIn]: sequelize.literal(`(
-                SELECT DISTINCT ti."itemId"
-                FROM "TradeItems" ti
-                JOIN "TradeTransactions" tt ON ti."transactionId" = tt.id
-                WHERE tt.status IN ('Matching', 'Complete')
-              )`)
-            }
-          },
+          
           { ownerEmail: { [Op.ne]: req.user.email } }
         ]
       },
