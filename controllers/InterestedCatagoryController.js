@@ -1,156 +1,86 @@
-// src/controllers/InterestedCatagoryController.js
-// NOTE: Keeps the project's "Catagory" spelling for compatibility.
+const InterestedCatagory = require('../models/InterestedCatagory');
+const User = require('../models/User');
 
-const { Sequelize } = require('sequelize');
-const sequelize = require('../config/db');
-const { User, InterestedCatagory } = require('../models');
-
-/**
- * GET /interested-categories
- * Returns all interested categories for the authenticated user.
- */
+// GET /interested-catagory  (?email=you@ex.com)
 exports.list = async (req, res) => {
     try {
-        const email = req.user?.email;
-        if (!email) return res.status(401).json({ error: 'Unauthorized' });
-
-        const rows = await InterestedCatagory.findAll({
-            where: { userEmail: email },
-            order: [['categoryName', 'ASC']]
-        });
-
-        return res.status(200).json({
-            items: rows.map(r => ({ id: r.id, categoryName: r.categoryName }))
-        });
+        const { email } = req.query;
+        const where = {};
+        if (email) where.email = email;
+        const rows = await InterestedCatagory.findAll({ where, order: [['createdAt', 'DESC']] });
+        return res.json({ data: rows });
     } catch (err) {
-        console.error('InterestedCatagory.list error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: err.message });
     }
 };
 
-/**
- * POST /interested-categories
- * Body: { categoryName: string }
- * Adds a single interested category if not already present.
- */
-exports.add = async (req, res) => {
+// GET /interested-catagory/:id
+exports.getOne = async (req, res) => {
+    try {
+        const row = await InterestedCatagory.findByPk(req.params.id);
+        if (!row) return res.status(404).json({ error: 'Not found' });
+        return res.json({ data: row });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+};
+
+// POST /interested-catagory
+// body: { categoryName }
+exports.create = async (req, res) => {
+    try {
+        // email comes from JWT
+        const email = req.user?.email;
+        if (!email) return res.status(401).json({ error: 'Unauthorized' });
+
+        const { categoryName } = req.body;
+        if (!categoryName) return res.status(400).json({ error: 'categoryName is required' });
+
+        // optional: ensure user exists
+        const user = await User.findOne({ where: { email } });
+        if (!user) return res.status(400).json({ error: 'User not found for token email' });
+
+        const created = await InterestedCatagory.create({ email, categoryName });
+        return res.status(201).json({ data: created });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+};
+
+// PUT /interested-catagory/:id
+// body: { categoryName }
+exports.update = async (req, res) => {
     try {
         const email = req.user?.email;
         if (!email) return res.status(401).json({ error: 'Unauthorized' });
 
-        const raw = String(req.body?.categoryName || '').trim();
-        if (!raw) return res.status(400).json({ error: 'categoryName is required' });
+        const row = await InterestedCatagory.findByPk(req.params.id);
+        if (!row) return res.status(404).json({ error: 'Not found' });
+        if (row.email !== email) return res.status(403).json({ error: 'Not owner' });
 
-        // Optional normalization (trim only; keep original case to match your UI)
-        const categoryName = raw;
+        const { categoryName } = req.body;
+        if (categoryName !== undefined) row.categoryName = categoryName;
 
-        // Try findOrCreate first (atomic-ish). The unique index guarantees no duplicates.
-        const [row, created] = await InterestedCatagory.findOrCreate({
-            where: { userEmail: email, categoryName },
-            defaults: { userEmail: email, categoryName }
-        });
-
-        if (!created) {
-            return res.status(409).json({
-                error: 'Category already added for this user',
-                item: { id: row.id, categoryName: row.categoryName }
-            });
-        }
-
-        return res.status(201).json({
-            id: row.id,
-            categoryName: row.categoryName
-        });
+        await row.save();
+        return res.json({ data: row });
     } catch (err) {
-        // Handle DB unique violation gracefully
-        if (err instanceof Sequelize.UniqueConstraintError) {
-            return res.status(409).json({ error: 'Category already added for this user' });
-        }
-        console.error('InterestedCatagory.add error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: err.message });
     }
 };
 
-/**
- * POST /interested-categories/bulk
- * Body: { categories: string[] }
- * Adds multiple interested categories, skipping duplicates.
- */
-exports.bulkAdd = async (req, res) => {
-    try {
-        const email = req.user?.email;
-        if (!email) return res.status(401).json({ error: 'Unauthorized' });
-
-        const categories = Array.isArray(req.body?.categories) ? req.body.categories : [];
-        const cleaned = Array.from(
-            new Set(
-                categories
-                    .map(c => String(c || '').trim())
-                    .filter(Boolean)
-            )
-        );
-
-        if (cleaned.length === 0) {
-            return res.status(400).json({ error: 'categories must be a non-empty array of strings' });
-        }
-
-        // Fetch existing for this user
-        const existing = await InterestedCatagory.findAll({
-            where: { userEmail: email }
-        });
-        const existingSet = new Set(existing.map(r => r.categoryName));
-
-        const toInsert = cleaned.filter(c => !existingSet.has(c));
-
-        // Insert only new ones
-        if (toInsert.length > 0) {
-            await InterestedCatagory.bulkCreate(
-                toInsert.map(categoryName => ({ userEmail: email, categoryName })),
-                { ignoreDuplicates: true } // works on MySQL & Postgres for unique indexes
-            );
-        }
-
-        const result = await InterestedCatagory.findAll({
-            where: { userEmail: email },
-            order: [['categoryName', 'ASC']]
-        });
-
-        return res.status(200).json({
-            added: toInsert,
-            skipped: cleaned.filter(c => existingSet.has(c)),
-            items: result.map(r => ({ id: r.id, categoryName: r.categoryName }))
-        });
-    } catch (err) {
-        if (err instanceof Sequelize.UniqueConstraintError) {
-            // Even with ignoreDuplicates, some dialects might still throw for races
-            return res.status(200).json({ info: 'Some categories were already present and were skipped' });
-        }
-        console.error('InterestedCatagory.bulkAdd error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-    }
-};
-
-/**
- * DELETE /interested-categories/:id
- * Removes one interested category row by ID (only for current user).
- */
+// DELETE /interested-catagory/:id
 exports.remove = async (req, res) => {
     try {
         const email = req.user?.email;
         if (!email) return res.status(401).json({ error: 'Unauthorized' });
 
-        const id = Number(req.params?.id);
-        if (!id) return res.status(400).json({ error: 'Valid id param is required' });
-
-        const row = await InterestedCatagory.findOne({
-            where: { id, userEmail: email }
-        });
+        const row = await InterestedCatagory.findByPk(req.params.id);
         if (!row) return res.status(404).json({ error: 'Not found' });
+        if (row.email !== email) return res.status(403).json({ error: 'Not owner' });
 
         await row.destroy();
-        return res.status(204).send();
+        return res.json({ success: true });
     } catch (err) {
-        console.error('InterestedCatagory.remove error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: err.message });
     }
 };
