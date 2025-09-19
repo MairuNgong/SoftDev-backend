@@ -10,7 +10,7 @@ if (!BASE_URL) throw new Error('Missing BASE_URL in .env');
 
 // Edit these:
 const KEYWORD = 'samsung 17';
-const CATEGORIES = ['Mobile Phone', 'Electronics']; 
+const CATEGORIES = ['Electronics']; 
 
 const http = axios.create({
     baseURL: BASE_URL,

@@ -42,14 +42,15 @@ exports.updateUser = async (req, res) => {
     await user.update(req.body);
 
     const cats = extractCategories(req.body);
-    if (Array.isArray(cats) && cats.length > 0) {
-      // Optional: clear old categories first if you don’t want duplicates
+    if (cats !== null) {
       await InterestedCatagory.destroy({ where: { email: user.email } });
-
-      await InterestedCatagory.bulkCreate(
+      if (cats.length > 0) {
+        await InterestedCatagory.bulkCreate(
         cats.map(name => ({ email: user.email, categoryName: name }))
       );
+      }
     }
+
 
     const updatedUser = await User.findByPk(user.email, {
       include: { model: InterestedCatagory, attributes: ['categoryName'] },
