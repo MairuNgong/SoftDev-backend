@@ -9,6 +9,44 @@ const { User, Item, ItemCatagory, ItemPicture } = require('../models');
  * @access Public (tryAuth)
  */
 
+async function filterItemsForSearch(items, user) {
+  if (!items || !Array.isArray(items)) return [];
+
+  // Get the IDs of the items passed in
+  const itemIds = items.map(item => item.id);
+
+  if (itemIds.length === 0) return [];
+
+  // Query DB: find items that are in active trades
+  const activeItems = await sequelize.query(
+    `
+    SELECT DISTINCT ti."itemId"
+    FROM "TradeItems" ti
+    JOIN "TradeTransactions" tt ON ti."transactionId" = tt.id
+    WHERE tt.status IN ('Matching', 'Complete')
+      AND ti."itemId" IN (:itemIds)
+    `,
+    {
+      replacements: { itemIds },
+      type: sequelize.QueryTypes.SELECT
+    }
+  );
+
+  const activeIds = activeItems.map(i => i.itemId);
+
+  // Filter items
+  return items
+    .filter(item => {
+      // Exclude items in active trades
+      if (activeIds.includes(item.id)) return false;
+
+      // Exclude items owned by the current user
+      if (user && user.email && item.ownerEmail === user.email) return false;
+
+      return true;
+    });
+}
+
 
 exports.searchByCategoryAndKeyword = async (req, res) => {
   try {
@@ -67,7 +105,11 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
       };
     });
 
-    return res.status(200).json({ items });
+    const filteredItems = await filterItemsForSearch(items, req.user);
+
+    // Step 4: Return filtered items
+    return res.status(200).json({ items: filteredItems });
+    
   } catch (err) {
     console.error('searchByCategoryAndKeyword error:', err);
     return res.status(500).json({ error: 'Internal server error' });
