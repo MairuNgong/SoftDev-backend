@@ -128,6 +128,7 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
         id: plain.id,
         name: plain.name,
         priceRange: plain.priceRange,
+        description: plain.description,
         ownerEmail: plain.ownerEmail,
         createdAt: plain.createdAt,
         updatedAt: plain.updatedAt,
@@ -140,7 +141,7 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
 
     // Step 4: Return filtered items
     return res.status(200).json({ items: filteredItems });
-    
+
   } catch (err) {
     console.error('searchByCategoryAndKeyword error:', err);
     return res.status(500).json({ error: 'Internal server error' });
@@ -169,10 +170,10 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
     }
 
     // Find user by email
-  const user = await User.findOne({ where: { email: req.user.email } });
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
+    const user = await User.findOne({ where: { email: req.user.email } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     // Get watched items from database
     const watchedItems = await user.getWatchedItems({ joinTableAttributes: [] });
@@ -187,7 +188,7 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
         [Op.and]: [
           // Exclude watched items
           { id: { [Op.notIn]: watchedItemIds } },
-          
+
           { ownerEmail: { [Op.ne]: req.user.email } }
         ]
       },
