@@ -45,6 +45,7 @@ async function filterItemsForSearch(items, user) {
 
       return true;
     });
+    
 }
 
 
@@ -187,13 +188,11 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
       where: {
         [Op.and]: [
           // Exclude watched items
-          { id: { [Op.notIn]: watchedItemIds } },
-
-          { ownerEmail: { [Op.ne]: req.user.email } }
+          { id: { [Op.notIn]: watchedItemIds } }
         ]
       },
       order: [['createdAt', 'DESC']],
-      limit: 10 // Added limit to return only 10 items
+      // Added limit to return only 10 items
     });
 
     let items = availableUnwatchedItems;
@@ -212,8 +211,10 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
         ItemPictures: Array.isArray(pics) ? pics.map(p => p.imageLink) : []
       };
     });
+    const filteredItems = await filterItemsForSearch(items, req.user);
 
-    return res.status(200).json(items);
+    // Step 4: Return filtered items
+    return res.status(200).json({ items: filteredItems.slice(0, 10) });
   } catch (error) {
     console.error('Error in getAvailableUnwatchedItems:', error);
     return res.status(500).json({ error: 'Internal server error' });
