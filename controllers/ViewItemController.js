@@ -204,6 +204,7 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
         id: plain.id,
         name: plain.name,
         priceRange: plain.priceRange,
+        description: plain.description,
         ownerEmail: plain.ownerEmail,
         createdAt: plain.createdAt,
         updatedAt: plain.updatedAt,
