@@ -1,8 +1,5 @@
-const User = require('../models/User');
-const Item = require('../models/Item');
-const ItemPicture = require('../models/ItemPicture');
-const ItemCatagory = require('../models/ItemCatagory'); // project spelling
-const InterestedCatagory = require('../models/InterestedCatagory');
+const {User,Item,ItemPicture,ItemCatagory,InterestedCatagory,TradeTransaction,TradeItem} = require('../models');
+const formatItem = require('../utils/itemFilter').formatItem;
 
 
 
@@ -33,13 +30,33 @@ exports.profile = async (req, res) => {
         },
       ],
     });
-    items = items.map(item => {
-      const plainItems = item.get({ plain: true });
-      plainItems.ItemCategories = plainItems.ItemCategories.map(c => c.categoryName);
-      plainItems.ItemPictures = plainItems.ItemPictures.map(p => p.imageLink);
-      return plainItems;
+    items = items.map(item => formatItem(item));
+
+    const itemIds = items.map(i => i.id);
+    const tradeItems = await TradeItem.findAll({
+      where: { itemId: itemIds },
+      include: { model: TradeTransaction, attributes: ['status'] }
     });
-    res.json({ user, items, owner });
+
+    // Make a lookup: itemId => status (take highest priority if multiple transactions)
+    const statusMap = {}; // itemId => status
+    tradeItems.forEach(ti => {
+      const status = ti.TradeTransaction?.status;
+      if (!status) return;
+
+      // Priority: Complete > Matching > Available (Offering/Cancelled)
+      if (status === 'Complete') statusMap[ti.itemId] = 'Complete';
+      else if (status === 'Matching' && statusMap[ti.itemId] !== 'Complete') statusMap[ti.itemId] = 'Matching';
+      else if ((status === 'Offering' || status === 'Cancelled') && !statusMap[ti.itemId]) statusMap[ti.itemId] = 'Available';
+    });
+
+    // Separate items into three groups
+    const Available = items.filter(i => !statusMap[i.id] || statusMap[i.id] === 'Available');
+    const Matching = items.filter(i => statusMap[i.id] === 'Matching');
+    const Complete = items.filter(i => statusMap[i.id] === 'Complete');
+
+
+    res.json({ user, Available, Matching, Complete, owner });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

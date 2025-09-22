@@ -36,7 +36,7 @@ const TradeTransaction = sequelize.define('TradeTransaction', {
 
     // Only 3 possible values
     status: {
-        type: DataTypes.ENUM('Offering', 'Matching', 'Complete'),
+        type: DataTypes.ENUM('Offering', 'Matching', 'Complete', 'Cancelled'),
         allowNull: false,
         defaultValue: 'Offering'
     },

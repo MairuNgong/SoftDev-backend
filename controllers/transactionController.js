@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const { TradeTransaction, TradeItem, Item,ItemCatagory,ItemPicture } = require('../models');
+const {formatItem} = require("../utils/itemFilter")
 
 exports.getTransactions = async (req, res) => {
   try {
@@ -137,13 +138,50 @@ exports.matchOffer = async (req, res) => {
   try {
     const { transactionId } = req.body;
     const user = req.user.email;
-    const transaction = await TradeTransaction.findByPk(transactionId);
+
+    // Find transaction
+    const transaction = await TradeTransaction.findByPk(transactionId, {
+      include: {
+        model: TradeItem,
+        include: [Item]
+      }
+    });
     if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+
+    // Check permission
     if (transaction.accepterEmail !== user) {
       return res.status(403).json({ error: 'You cant accept this transaction' });
     }
-    if(transaction.status == 'Offering') transaction.status = 'Matching';
-    await transaction.save();
+
+    // Get all itemIds in this transaction
+    const itemIds = transaction.TradeItems.map(ti => ti.ItemId);
+
+    // Check if any of these items are already in another Matching transaction
+    const conflict = await TradeTransaction.findOne({
+      where: {
+        status: 'Matching',
+        id: { [Op.ne]: transactionId }
+      },
+      include: {
+        model: TradeItem,
+        where: {
+          ItemId: { [Op.in]: itemIds }
+        }
+      }
+    });
+
+    if (conflict) {
+      return res.status(400).json({
+        error: 'Some items are already involved in another matching transaction'
+      });
+    }
+
+    // Update status
+    if (transaction.status === 'Offering') {
+      transaction.status = 'Matching';
+      await transaction.save();
+    }
+
     res.json(transaction);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -191,7 +229,7 @@ exports.cancelTransaction = async (req, res) => {
       return res.status(403).json({ error: 'You are not part of this transaction' });
     }
 
-    if(transaction.status != 'Complete')transaction.status = 'cancelled';
+    if(transaction.status != 'Complete')transaction.status = 'Cancelled';
     await transaction.save();
     res.json(transaction);
   } catch (err) {

@@ -1,53 +1,12 @@
 const { Op } = require('sequelize');
-
-const sequelize = require('../config/db');
 const { User, Item, ItemCatagory, ItemPicture } = require('../models');
+const { formatItem, BaseFilter } = require('../utils/itemFilter');
 
 /**
  * @desc Get all unwatched items for a specific user (fallback: random items)
  * @route GET /items/un_watched_item
  * @access Public (tryAuth)
  */
-
-async function filterItemsForSearch(items, user) {
-  if (!items || !Array.isArray(items)) return [];
-
-  // Get the IDs of the items passed in
-  const itemIds = items.map(item => item.id);
-
-  if (itemIds.length === 0) return [];
-
-  // Query DB: find items that are in active trades
-  const activeItems = await sequelize.query(
-    `
-    SELECT DISTINCT ti."itemId"
-    FROM "TradeItems" ti
-    JOIN "TradeTransactions" tt ON ti."transactionId" = tt.id
-    WHERE tt.status IN ('Matching', 'Complete')
-      AND ti."itemId" IN (:itemIds)
-    `,
-    {
-      replacements: { itemIds },
-      type: sequelize.QueryTypes.SELECT
-    }
-  );
-
-  const activeIds = activeItems.map(i => i.itemId);
-
-  // Filter items
-  return items
-    .filter(item => {
-      // Exclude items in active trades
-      if (activeIds.includes(item.id)) return false;
-
-      // Exclude items owned by the current user
-      if (user && user.email && item.ownerEmail === user.email) return false;
-
-      return true;
-    });
-    
-}
-
 
 exports.searchByCategoryAndKeyword = async (req, res) => {
   try {
@@ -120,25 +79,8 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
       });
     }
 
-    // map result
-    items = items.map(item => {
-      const plain = item.get({ plain: true });
-      const cats = plain.ItemCatagories || plain.ItemCategories || [];
-      const pics = plain.ItemPictures || [];
-      return {
-        id: plain.id,
-        name: plain.name,
-        priceRange: plain.priceRange,
-        description: plain.description,
-        ownerEmail: plain.ownerEmail,
-        createdAt: plain.createdAt,
-        updatedAt: plain.updatedAt,
-        ItemCategories: Array.isArray(cats) ? cats.map(c => c.categoryName) : [],
-        ItemPictures: Array.isArray(pics) ? pics.map(p => p.imageLink) : []
-      };
-    });
-
-    const filteredItems = await filterItemsForSearch(items, req.user);
+    const formatted = items.map(formatItem);
+    const filteredItems = await BaseFilter(formatted, req.user);
 
     // Step 4: Return filtered items
     return res.status(200).json({ items: filteredItems });
@@ -151,71 +93,44 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
 
 exports.getAvailableUnwatchedItems = async (req, res) => {
   try {
+    // Guest (no login)
     if (!req.user || !req.user.email) {
       const randomItems = await Item.findAll({
-        where: {
-          // Exclude items that are in 'Matching' or 'Complete' trades
-          id: {
-            [Op.notIn]: sequelize.literal(`(
-              SELECT DISTINCT ti."itemId" 
-              FROM "TradeItems" ti
-              JOIN "TradeTransactions" tt ON ti."transactionId" = tt.id
-              WHERE tt.status IN ('Matching', 'Complete')
-            )`)
-          }
-        },
-        order: [[sequelize.fn('RANDOM')]],
+        order: [[Item.sequelize.fn('RANDOM')]],
         limit: 10
       });
-      return res.status(200).json(randomItems);
+      const formatted = randomItems.map(formatItem);
+      const filtered = await BaseFilter(formatted, null);
+      return res.status(200).json(filtered);
     }
 
-    // Find user by email
-    const user = await User.findOne({ where: { email: req.user.email } });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    const user = await User.findByPk(req.user.email);
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Get watched items from database
+    // Get watched item IDs
     const watchedItems = await user.getWatchedItems({ joinTableAttributes: [] });
     const watchedItemIds = watchedItems.map(i => i.id);
 
-    // Find items that are: 
-    // 1. NOT watched by user
-    // 2. NOT in active trades  
-    // 3. NOT owned by the current user
-    const availableUnwatchedItems = await Item.findAll({
-      where: {
-        [Op.and]: [
-          // Exclude watched items
-          { id: { [Op.notIn]: watchedItemIds } }
-        ]
-      },
-      order: [['createdAt', 'DESC']],
-      // Added limit to return only 10 items
+    // Fetch unwatched items
+    let availableUnwatchedItems = await Item.findAll({
+      where: { id: { [Op.notIn]: watchedItemIds } },
+      order: [['createdAt', 'DESC']]
     });
 
-    let items = availableUnwatchedItems;
-    items = items.map(item => {
-      const plain = item.get({ plain: true });
-      const cats = plain.ItemCatagories || plain.ItemCategories || [];
-      const pics = plain.ItemPictures || [];
-      return {
-        id: plain.id,
-        name: plain.name,
-        priceRange: plain.priceRange,
-        description: plain.description,
-        ownerEmail: plain.ownerEmail,
-        createdAt: plain.createdAt,
-        updatedAt: plain.updatedAt,
-        ItemCategories: Array.isArray(cats) ? cats.map(c => c.categoryName) : [],
-        ItemPictures: Array.isArray(pics) ? pics.map(p => p.imageLink) : []
-      };
-    });
-    const filteredItems = await filterItemsForSearch(items, req.user);
+    let formatted = availableUnwatchedItems.map(formatItem);
+    let filtered = await BaseFilter(formatted, req.user);
 
-    // Step 4: Return filtered items
-    return res.status(200).json({ items: filteredItems.slice(0, 10) });
+    // If no items left → reset watched items and re-fetch
+    if (filtered.length === 0) {
+      await user.setWatchedItems([]);
+      const resetItems = await Item.findAll({
+        order: [['createdAt', 'DESC']]
+      });
+      formatted = resetItems.map(formatItem);
+      filtered = await BaseFilter(formatted, req.user);
+    }
+
+    return res.status(200).json({ items: filtered.slice(0, 10) });
   } catch (error) {
     console.error('Error in getAvailableUnwatchedItems:', error);
     return res.status(500).json({ error: 'Internal server error' });
