@@ -154,7 +154,7 @@ exports.matchOffer = async (req, res) => {
     }
 
     // Get all itemIds in this transaction
-    const itemIds = transaction.TradeItems.map(ti => ti.ItemId);
+    const itemIds = transaction.TradeItems.map(ti => ti.itemId);
 
     // Check if any of these items are already in another Matching transaction
     const conflict = await TradeTransaction.findOne({
@@ -165,7 +165,7 @@ exports.matchOffer = async (req, res) => {
       include: {
         model: TradeItem,
         where: {
-          ItemId: { [Op.in]: itemIds }
+          itemId: { [Op.in]: itemIds }
         }
       }
     });
@@ -198,6 +198,9 @@ exports.confirmMatch = async (req, res) => {
     const transaction = await TradeTransaction.findByPk(transactionId);
     if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
 
+    if (transaction.status !== 'Matching') {
+      return res.status(400).json({ error: 'Transaction is not in Matching status' });
+    }
     // Check who is confirming
     if (transaction.offerEmail === user) {
       transaction.isOffererConfirm = true;
