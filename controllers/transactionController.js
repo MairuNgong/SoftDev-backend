@@ -50,27 +50,6 @@ exports.getTransactions = async (req, res) => {
       });
     });
 
-    for (let t of transactions) {
-      if (t.status === 'Offering') {
-        const itemIds = t.TradeItems.map(ti => ti.itemId);
-        const conflict = await TradeTransaction.findOne({
-          where: {
-            status: 'Matching',
-            id: { [Op.ne]: t.id }
-          },
-          include: {
-            model: TradeItem,
-            where: {
-              itemId: { [Op.in]: itemIds }
-            }
-          }
-        });
-
-        if (conflict) {
-          t.status = 'Locked-Offering';
-        } 
-      }
-    }
 
     res.json({transactions});
   } catch (err) {
