@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { TradeTransaction, TradeItem, Item,ItemCatagory,ItemPicture } = require('../models');
+const { User,TradeTransaction, TradeItem, Item,ItemCatagory,ItemPicture } = require('../models');
+const sequelize = require('../config/db');
 const {formatItem} = require("../utils/itemFilter")
 
 exports.getTransactions = async (req, res) => {
@@ -262,4 +263,79 @@ exports.cancelTransaction = async (req, res) => {
   }
 };
 
+// adjust path as needed
 
+exports.getOffer = async (req, res) => {
+  try {
+    // Guest (no login) → return empty
+    if (!req.user || !req.user.email) {
+      return res.status(200).json({ items: [] });
+    }
+
+    const user = await User.findByPk(req.user.email);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // ✅ Fixed SQL query - use single quotes for string comparison
+    const receivedItems = await sequelize.query(
+      `
+      SELECT ti."itemId"
+      FROM "TradeItems" ti
+      JOIN "TradeTransactions" tt ON ti."transactionId" = tt.id
+      WHERE tt."accepterEmail" = :email AND tt.status = 'Offering'
+      `,
+      {
+        replacements: { email: req.user.email },
+        type: sequelize.QueryTypes.SELECT
+      }
+    );
+
+    const itemIds = receivedItems.map(i => i.itemId);
+    
+    // If no items found, return empty array
+    if (itemIds.length === 0) {
+      return res.status(200).json({ items: [] });
+    }
+
+    // ✅ Fetch items with proper includes
+    const items = await Item.findAll({
+      where: { id: itemIds },
+      include: [
+        { 
+          model: ItemCatagory, 
+          attributes: ['categoryName'] 
+        },
+        { 
+          model: ItemPicture, 
+          attributes: ['imageLink'] 
+        }
+      ]
+    });
+
+    // ✅ Check if formatItem function exists
+    if (typeof formatItem !== 'function') {
+      // Fallback formatting if formatItem is missing
+      const formatted = items.map(item => {
+        const plain = item.get({ plain: true });
+        return {
+          id: plain.id,
+          name: plain.name,
+          priceRange: plain.priceRange,
+          description: plain.description,
+          ownerEmail: plain.ownerEmail,
+          createdAt: plain.createdAt,
+          updatedAt: plain.updatedAt,
+          ItemCategories: plain.ItemCatagories ? plain.ItemCatagories.map(c => c.categoryName) : [],
+          ItemPictures: plain.ItemPictures ? plain.ItemPictures.map(p => p.imageLink) : []
+        };
+      });
+      return res.status(200).json({ items: formatted });
+    }
+
+    const formatted = items.map(formatItem);
+    return res.status(200).json({ items: formatted });
+
+  } catch (error) {
+    console.error('Error in getOffer:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};

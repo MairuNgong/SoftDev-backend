@@ -14,4 +14,6 @@ router.put('/confirm', requireAuth, transactionController.confirmMatch);
 
 router.put('/cancel', requireAuth, transactionController.cancelTransaction);
 
+router.get('/get_offer', requireAuth, transactionController.getOffer);
+
 module.exports = router;
