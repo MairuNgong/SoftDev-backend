@@ -1,3 +1,4 @@
+// routes/transaction.js
 const express = require('express');
 const router = express.Router();
 const transactionController = require('../controllers/transactionController');
@@ -14,6 +15,8 @@ router.put('/confirm', requireAuth, transactionController.confirmMatch);
 
 router.put('/cancel', requireAuth, transactionController.cancelTransaction);
 
-router.get('/get_offer', requireAuth, transactionController.getOffer);
+// NEW: rate a transaction (score 1–10)
+// body: { transactionId, score }
+router.post('/rate', requireAuth, transactionController.rateTransaction);
 
 module.exports = router;

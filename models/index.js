@@ -4,9 +4,9 @@ const InterestedCatagory = require('./InterestedCatagory');
 const Blocked = require('./Blocked');
 const ItemPicture = require('./ItemPicture');
 const Item = require('./Item');
-const ItemCatagory = require('./ItemCatagory'); // keep project spelling
+const ItemCatagory = require('./ItemCatagory');
 const Message = require('./Message');
-const Rating = require('./Rating');
+// const Rating = require('./Rating');   // <- remove this
 const TradeItem = require('./TradeItem');
 const WatchedItem = require('./WatchedItem');
 const TradeTransaction = require('./TradeTransaction');
@@ -19,8 +19,7 @@ module.exports = {
     Item,
     ItemCatagory,
     Message,
-    Rating,
     TradeItem,
     WatchedItem,
-    TradeTransaction
+    TradeTransaction,
 };

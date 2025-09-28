@@ -1,115 +1,141 @@
 // models/TradeTransaction.js
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
-const User = require('./User');
+"use strict";
 
-const TradeTransaction = sequelize.define('TradeTransaction', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/db");
+const User = require("./User");
 
-    offerEmail: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        references: {
-            model: User,
-            key: 'email'
+const TradeTransaction = sequelize.define(
+    "TradeTransaction",
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true,
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE',
-        validate: { isEmail: true }
-    },
 
-    accepterEmail: {
-        type: DataTypes.STRING,
-        allowNull: false,
-        references: {
-            model: User,
-            key: 'email'
+        offerEmail: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            references: { model: User, key: "email" },
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
+            validate: { isEmail: true },
         },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE',
-        validate: { isEmail: true }
-    },
 
-    // Only 3 possible values
-    status: {
-        type: DataTypes.ENUM('Offering', 'Matching', 'Complete', 'Cancelled'),
-        allowNull: false,
-        defaultValue: 'Offering'
-    },
+        accepterEmail: {
+            type: DataTypes.STRING,
+            allowNull: false,
+            references: { model: User, key: "email" },
+            onUpdate: "CASCADE",
+            onDelete: "CASCADE",
+            validate: { isEmail: true },
+        },
 
-    // Money amounts (use DECIMAL to avoid float rounding issues)
-    offerMoney: {
-        type: DataTypes.DECIMAL(12, 2),
-        allowNull: true,
-        validate: { min: 0 }
-    },
-    
-    requestMoney: {
-        type: DataTypes.DECIMAL(12, 2),
-        allowNull: true,
-        validate: { min: 0 }
-    },
+        // Four possible values
+        status: {
+            type: DataTypes.ENUM("Offering", "Matching", "Complete", "Cancelled"),
+            allowNull: false,
+            defaultValue: "Offering",
+        },
 
-    isOffererIDCard: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false
-    },
+        // Money amounts (use DECIMAL to avoid float rounding issues)
+        offerMoney: {
+            type: DataTypes.DECIMAL(12, 2),
+            allowNull: true,
+            validate: { min: 0 },
+        },
 
-    isAccepterIDCard: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false
-    },
-    isOffererConfirm: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false
-    },
+        requestMoney: {
+            type: DataTypes.DECIMAL(12, 2),
+            allowNull: true,
+            validate: { min: 0 },
+        },
 
-    isAccepterConfirm: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false
+        isOffererIDCard: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+
+        isAccepterIDCard: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+
+        isOffererConfirm: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+
+        isAccepterConfirm: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false,
+        },
+
+        // Per-party ratings (1–10). Keep nullable so existing rows migrate cleanly.
+        offererRating: {
+            type: DataTypes.INTEGER, // portable across dialects
+            allowNull: true,
+            validate: { min: 1, max: 10 },
+        },
+
+        accepterRating: {
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            validate: { min: 1, max: 10 },
+        },
+    },
+    {
+        timestamps: true,
+        tableName: "TradeTransactions",
+        indexes: [
+            { fields: ["offerEmail"] },
+            { fields: ["accepterEmail"] },
+            { fields: ["status"] },
+            { fields: ["offererRating"] },
+            { fields: ["accepterRating"] },
+        ],
+        validate: {
+            // parties must be different
+            differentParties() {
+                if (this.offerEmail === this.accepterEmail) {
+                    throw new Error("offerEmail and accepterEmail must be different.");
+                }
+            },
+            // if any rating is set, trade must be complete
+            ratingsOnlyWhenComplete() {
+                const hasAnyRating =
+                    this.offererRating != null || this.accepterRating != null;
+                if (hasAnyRating && this.status !== "Complete") {
+                    throw new Error(
+                        "Ratings can only be set when the trade status is 'Complete'."
+                    );
+                }
+            },
+        },
     }
-}, {
-    timestamps: true,              
-    tableName: 'TradeTransactions',
-    indexes: [
-        { fields: ['offerEmail'] },
-        { fields: ['accepterEmail'] },
-        { fields: ['status'] }
-    ],
-    // optional safety: prevent self-trades
-    validate: {
-        differentParties() {
-            if (this.offerEmail === this.accepterEmail) {
-                throw new Error('offerEmail and accepterEmail must be different.');
-            }
-        }
-    }
-});
+);
 
 // Associations
 User.hasMany(TradeTransaction, {
-    foreignKey: 'offerEmail',
-    as: 'OfferedTrades'
+    foreignKey: "offerEmail",
+    as: "OfferedTrades",
 });
 User.hasMany(TradeTransaction, {
-    foreignKey: 'accepterEmail',
-    as: 'AcceptedTrades'
+    foreignKey: "accepterEmail",
+    as: "AcceptedTrades",
 });
 TradeTransaction.belongsTo(User, {
-    foreignKey: 'offerEmail',
-    as: 'Offerer'
+    foreignKey: "offerEmail",
+    as: "Offerer",
 });
 TradeTransaction.belongsTo(User, {
-    foreignKey: 'accepterEmail',
-    as: 'Accepter'
+    foreignKey: "accepterEmail",
+    as: "Accepter",
 });
 
 module.exports = TradeTransaction;
