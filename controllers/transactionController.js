@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { TradeTransaction, TradeItem, Item,ItemCatagory,ItemPicture } = require('../models');
+const { User,TradeTransaction, TradeItem, Item,ItemCatagory,ItemPicture } = require('../models');
+const sequelize = require('../config/db');
 const {formatItem} = require("../utils/itemFilter")
 
 exports.getTransactions = async (req, res) => {
@@ -225,4 +226,87 @@ exports.cancelTransaction = async (req, res) => {
   }
 };
 
+
+exports.getOffer = async (req, res) => {
+  try {
+    // Guest → return empty
+    if (!req.user || !req.user.email) {
+      return res.status(200).json({ transactions: [] });
+    }
+
+    // Find all "Offering" transactions where user is the accepter
+    const transactions = await TradeTransaction.findAll({
+      where: { 
+        accepterEmail: req.user.email, 
+        status: 'Offering' 
+      },
+      include: [
+        {
+          model: TradeItem,
+          include: [
+            {
+              model: Item,
+              include: [
+                { model: ItemCatagory, attributes: ['categoryName'] },
+                { model: ItemPicture, attributes: ['imageLink'] }
+              ]
+            }
+          ]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Format response
+    const formatted = transactions.map(tx => {
+      const plainTx = tx.get({ plain: true });
+      return {
+        id: plainTx.id,
+        offerEmail: plainTx.offerEmail,
+        accepterEmail: plainTx.accepterEmail,
+        status: plainTx.status,
+        offerMoney: plainTx.offerMoney,
+        requestMoney: plainTx.requestMoney,
+        isOffererIDCard: plainTx.isOffererIDCard,
+        isAccepterIDCard: plainTx.isAccepterIDCard,
+        isOffererConfirm: plainTx.isOffererConfirm,
+        isAccepterConfirm: plainTx.isAccepterConfirm,
+        offererRating: plainTx.offererRating,
+        accepterRating: plainTx.accepterRating,
+        createdAt: plainTx.createdAt,
+        updatedAt: plainTx.updatedAt,
+        TradeItems: plainTx.TradeItems.map(ti => {
+          const item = ti.Item ? ti.Item : null;
+          return {
+            transactionId: ti.transactionId,
+            itemId: ti.itemId,
+            Item: item
+              ? {
+                  id: item.id,
+                  name: item.name,
+                  priceRange: item.priceRange,
+                  description: item.description,
+                  ownerEmail: item.ownerEmail,
+                  createdAt: item.createdAt,
+                  updatedAt: item.updatedAt,
+                  ItemCategories: item.ItemCatagories
+                    ? item.ItemCatagories.map(c => c.categoryName)
+                    : [],
+                  ItemPictures: item.ItemPictures
+                    ? item.ItemPictures.map(p => p.imageLink)
+                    : []
+                }
+              : null
+          };
+        })
+      };
+    });
+
+    return res.status(200).json({ transactions: formatted });
+
+  } catch (error) {
+    console.error('Error in getOffer:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
 
