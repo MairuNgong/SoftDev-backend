@@ -257,6 +257,29 @@ exports.getOffer = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
+    // 🔹 Conflict check → update status if needed
+    for (let t of transactions) {
+      if (t.status === 'Offering') {
+        const itemIds = t.TradeItems.map(ti => ti.itemId);
+        const conflict = await TradeTransaction.findOne({
+          where: {
+            status: 'Matching',
+            id: { [Op.ne]: t.id }
+          },
+          include: {
+            model: TradeItem,
+            where: {
+              itemId: { [Op.in]: itemIds }
+            }
+          }
+        });
+
+        if (conflict) {
+          t.status = 'Locked-Offering';
+        } 
+      }
+    }
+
     // Format response
     const formatted = transactions.map(tx => {
       const plainTx = tx.get({ plain: true });
@@ -310,3 +333,61 @@ exports.getOffer = async (req, res) => {
   }
 };
 
+exports.rateTransaction = async (req, res) => {
+  try {
+    const { transactionId, score } = req.body;
+    const raterEmail = req.user?.email;
+
+    if (!transactionId || Number.isNaN(Number(transactionId))) {
+      return res.status(400).json({ error: "transactionId is required and must be a number" });
+    }
+    const parsedScore = Number(score);
+    if (!Number.isInteger(parsedScore) || parsedScore < 1 || parsedScore > 10) {
+      return res.status(400).json({ error: "score must be an integer between 1 and 10" });
+    }
+    if (!raterEmail) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const tx = await TradeTransaction.findByPk(transactionId);
+    if (!tx) return res.status(404).json({ error: "Transaction not found" });
+
+    if (tx.status !== "Complete" || tx.status !== "Cancelled") {
+      return res
+        .status(409)
+        .json({ error: "You can only rate a transaction when it's Complete" });
+    }
+
+    let targetField = null;
+    if (tx.offerEmail === raterEmail) {
+      targetField = "accepterRating"; // offerer rates the accepter
+    } else if (tx.accepterEmail === raterEmail) {
+      targetField = "offererRating"; // accepter rates the offerer
+    } else {
+      return res.status(403).json({ error: "You are not a participant in this transaction" });
+    }
+
+    if (tx[targetField] != null) {
+      return res.status(409).json({ error: "You have already submitted a rating for this transaction" });
+    }
+
+    tx[targetField] = parsedScore;
+    await tx.save();
+
+    return res.status(200).json({
+      message: "Rating submitted",
+      data: {
+        id: tx.id,
+        status: tx.status,
+        offerEmail: tx.offerEmail,
+        accepterEmail: tx.accepterEmail,
+        offererRating: tx.offererRating,
+        accepterRating: tx.accepterRating,
+        updatedAt: tx.updatedAt,
+      },
+    });
+  } catch (err) {
+    console.error("rateTransaction error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
