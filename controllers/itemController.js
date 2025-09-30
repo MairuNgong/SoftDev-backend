@@ -30,10 +30,19 @@ function pickPayload(body) {
 /** Normalize categoryName/categoryNames into an array, or null if not provided */
 function extractCategories(body) {
   const { categoryNames } = body || {};
+
+  if (!categoryNames) return []; // empty string, undefined, null → []
+
   if (Array.isArray(categoryNames)) {
     return categoryNames.filter(Boolean).map(s => String(s).trim()).filter(Boolean);
   }
-  return null; // not provided at all
+
+  if (typeof categoryNames === "string") {
+    const trimmed = categoryNames.trim();
+    return trimmed ? [trimmed] : []; // empty string → []
+  }
+
+  return [];
 }
 
 
@@ -58,7 +67,7 @@ exports.getItems = async (req, res) => {
           separate: true,   // Ensures limit works per item
         },
         { model: User, attributes: ['RatingScore'] }
-        
+
       ],
     });
 

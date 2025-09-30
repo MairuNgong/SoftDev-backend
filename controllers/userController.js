@@ -10,12 +10,20 @@ const InterestedCatagory = require('../models/InterestedCatagory');
 // };
 
 function extractCategories(body) {
-    const { categoryNames } = body || {};
-    if (Array.isArray(categoryNames)) {
-        return categoryNames.filter(Boolean).map(s => String(s).trim()).filter(Boolean);
-    }
-    
-    return null; // not provided at all
+  const { categoryNames } = body || {};
+
+  if (!categoryNames) return []; // empty string, undefined, null → []
+
+  if (Array.isArray(categoryNames)) {
+    return categoryNames.filter(Boolean).map(s => String(s).trim()).filter(Boolean);
+  }
+
+  if (typeof categoryNames === "string") {
+    const trimmed = categoryNames.trim();
+    return trimmed ? [trimmed] : []; // empty string → []
+  }
+
+  return [];
 }
 
 exports.getUserByEmail = async (req, res) => {
@@ -46,8 +54,8 @@ exports.updateUser = async (req, res) => {
       await InterestedCatagory.destroy({ where: { email: user.email } });
       if (cats.length > 0) {
         await InterestedCatagory.bulkCreate(
-        cats.map(name => ({ email: user.email, categoryName: name }))
-      );
+          cats.map(name => ({ email: user.email, categoryName: name }))
+        );
       }
     }
 
@@ -57,7 +65,7 @@ exports.updateUser = async (req, res) => {
     });
     const plain = updatedUser.get({ plain: true });
     plain.InterestedCategories = plain.InterestedCategories.map(c => c.categoryName);
-    res.json(plain);   
+    res.json(plain);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
