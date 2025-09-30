@@ -1,7 +1,7 @@
 const sequelize = require('../config/db');
 
 function formatItem(item) {
-  const plain = item.get({ plain: true });
+  const plain = typeof item.get === "function" ? item.get({ plain: true }) : item;
   const cats = plain.ItemCatagories || plain.ItemCategories || [];
   const pics = plain.ItemPictures || [];
 
@@ -11,6 +11,7 @@ function formatItem(item) {
     priceRange: plain.priceRange,
     description: plain.description,
     ownerEmail: plain.ownerEmail,
+    ownerRatingScore: plain.User ? plain.User.RatingScore : null,
     createdAt: plain.createdAt,
     updatedAt: plain.updatedAt,
     ItemCategories: Array.isArray(cats) ? cats.map(c => c.categoryName) : [],

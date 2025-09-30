@@ -3,6 +3,8 @@ const { Op } = require('sequelize');
 const Item = require('../models/Item');
 const ItemCatagory = require('../models/ItemCatagory'); // project spelling
 const ItemPicture = require('../models/ItemPicture');
+const User = require('../models/User')
+const { formatItem } = require('../utils/itemFilter');
 
 /** Safe field whitelist — adjust to your Item model */
 const ALLOWED_FIELDS = [
@@ -55,13 +57,13 @@ exports.getItems = async (req, res) => {
           order: [['createdAt', 'DESC']],
           separate: true,   // Ensures limit works per item
         },
+        { model: User, attributes: ['RatingScore'] }
+        
       ],
     });
 
     items = items.map(item => {
-      const plain = item.get({ plain: true });
-      plain.ItemCategories = plain.ItemCategories.map(c => c.categoryName);
-      plain.ItemPictures = plain.ItemPictures.map(p => p.imageLink);
+      const plain = formatItem(item)
       return plain;
     });
     return res.json({ data: items });
@@ -83,13 +85,12 @@ exports.getItemById = async (req, res) => {
           order: [['createdAt', 'DESC']],
           separate: true,   // Ensures limit works per item
         },
+        { model: User, attributes: ['RatingScore'] }
       ]
     });
 
     if (!item) return res.status(404).json({ error: 'Item not found' });
-    item = item.get({ plain: true });
-    item.ItemCategories = item.ItemCategories.map(c => c.categoryName);
-    item.ItemPictures = item.ItemPictures.map(p => p.imageLink);
+    item = formatItem(item)
     const owner = !!(req.user && req.user.email === item.ownerEmail);
     return res.json({ data: item, owner });
   } catch (err) {

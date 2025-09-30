@@ -1,4 +1,4 @@
-const { Op } = require('sequelize');
+const { Op, Model } = require('sequelize');
 const { User, Item, ItemCatagory, ItemPicture } = require('../models');
 const { formatItem, BaseFilter } = require('../utils/itemFilter');
 
@@ -46,7 +46,8 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
             attributes: [],
             where: { categoryName: { [Op.in]: list } },
             required: true
-          }
+          },
+          { model: User, attributes: ['RatingScore'] }
         ],
         raw: true
       });
@@ -61,7 +62,8 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
         where: { ...whereItem, id: { [Op.in]: ids } },
         include: [
           { model: ItemCatagory, attributes: ['id', 'categoryName'], required: false },
-          includeLatestPicture
+          includeLatestPicture,
+          { model: User, attributes: ['RatingScore'] }
         ],
         distinct: true,
         order: [['createdAt', 'DESC']]
@@ -72,7 +74,8 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
         where: whereItem,
         include: [
           { model: ItemCatagory, attributes: ['id', 'categoryName'], required: false },
-          includeLatestPicture
+          includeLatestPicture,
+          { model: User, attributes: ['RatingScore'] }
         ],
         distinct: true,
         order: [['createdAt', 'DESC']]
@@ -96,6 +99,7 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
     // Guest (no login)
     if (!req.user || !req.user.email) {
       const randomItems = await Item.findAll({
+        include: { model: User, attributes: ['RatingScore'] }, 
         order: [[Item.sequelize.fn('RANDOM')]],
         limit: 10
       });
@@ -114,6 +118,7 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
     // Fetch unwatched items
     let availableUnwatchedItems = await Item.findAll({
       where: { id: { [Op.notIn]: watchedItemIds } },
+      include: { model: User, attributes: ['RatingScore'] }, 
       order: [['createdAt', 'DESC']]
     });
 

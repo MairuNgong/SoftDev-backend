@@ -23,6 +23,7 @@ exports.getTransactions = async (req, res) => {
                 order: [["createdAt", "DESC"]],
                 separate: true, // ensure limit applies per item
               },
+              { model: User, attributes: ['RatingScore'] }
             ],
           },
         },
@@ -31,19 +32,23 @@ exports.getTransactions = async (req, res) => {
     });
 
     // Flatten nested arrays for categories/pictures
-    transactions = transactions.map((t) => t.get({ plain: true }));
-    transactions.forEach((t) => {
-      (t.TradeItems || []).forEach((tradeItem) => {
-        const item = tradeItem.Item;
-        if (!item) return;
-        if (item.ItemCategories) {
-          item.ItemCategories = item.ItemCategories.map((c) => c.categoryName);
-        }
-        if (item.ItemPictures) {
-          item.ItemPictures = item.ItemPictures.map((p) => p.imageLink);
-        }
+    transactions = transactions.map((t) => {
+    const plain = t.get({ plain: true });
+
+    if (plain.TradeItems) {
+      plain.TradeItems = plain.TradeItems.map((tradeItem) => {
+        if (!tradeItem.Item) return tradeItem;
+
+        // Use your formatItem here
+        return {
+          ...tradeItem,
+          Item: formatItem(tradeItem.Item)
+        };
       });
-    });
+    }
+
+    return plain;
+  });
 
     res.json({ transactions });
   } catch (err) {
@@ -248,7 +253,8 @@ exports.getOffer = async (req, res) => {
               model: Item,
               include: [
                 { model: ItemCatagory, attributes: ['categoryName'] },
-                { model: ItemPicture, attributes: ['imageLink'] }
+                { model: ItemPicture, attributes: ['imageLink'] },
+                { model: User, attributes: ['RatingScore'] }
               ]
             }
           ]
@@ -281,8 +287,9 @@ exports.getOffer = async (req, res) => {
     }
 
     // Format response
-    const formatted = transactions.map(tx => {
+    const formatted = transactions.map((tx) => {
       const plainTx = tx.get({ plain: true });
+
       return {
         id: plainTx.id,
         offerEmail: plainTx.offerEmail,
@@ -298,30 +305,11 @@ exports.getOffer = async (req, res) => {
         accepterRating: plainTx.accepterRating,
         createdAt: plainTx.createdAt,
         updatedAt: plainTx.updatedAt,
-        TradeItems: plainTx.TradeItems.map(ti => {
-          const item = ti.Item ? ti.Item : null;
-          return {
-            transactionId: ti.transactionId,
-            itemId: ti.itemId,
-            Item: item
-              ? {
-                  id: item.id,
-                  name: item.name,
-                  priceRange: item.priceRange,
-                  description: item.description,
-                  ownerEmail: item.ownerEmail,
-                  createdAt: item.createdAt,
-                  updatedAt: item.updatedAt,
-                  ItemCategories: item.ItemCatagories
-                    ? item.ItemCatagories.map(c => c.categoryName)
-                    : [],
-                  ItemPictures: item.ItemPictures
-                    ? item.ItemPictures.map(p => p.imageLink)
-                    : []
-                }
-              : null
-          };
-        })
+        TradeItems: (plainTx.TradeItems || []).map((ti) => ({
+          transactionId: ti.transactionId,
+          itemId: ti.itemId,
+          Item: ti.Item ? formatItem(ti.Item) : null, // <-- use shared formatter
+        })),
       };
     });
 
