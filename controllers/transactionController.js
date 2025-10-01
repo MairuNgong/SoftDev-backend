@@ -343,7 +343,7 @@ exports.rateTransaction = async (req, res) => {
     if (!tx) return res.status(404).json({ error: "Transaction not found" });
 
     // 🔧 bugfix: only allow rating when Complete
-    if (tx.status !== "Complete") {
+    if (!["Complete", "Cancelled"].includes(tx.status)) {
       return res.status(409).json({ error: "You can only rate a transaction when it's Complete" });
     }
 
