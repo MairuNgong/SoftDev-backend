@@ -110,7 +110,7 @@ const TradeTransaction = sequelize.define(
             ratingsOnlyWhenComplete() {
                 const hasAnyRating =
                     this.offererRating != null || this.accepterRating != null;
-                if (hasAnyRating && (this.status !== "Complete" || this.status !== "Cancelled")) {
+                if (hasAnyRating && this.status !== "Complete") {
                     throw new Error(
                         "Ratings can only be set when the trade status is 'Complete'."
                     );

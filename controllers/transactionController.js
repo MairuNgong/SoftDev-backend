@@ -329,10 +329,12 @@ exports.rateTransaction = async (req, res) => {
     if (!transactionId || Number.isNaN(Number(transactionId))) {
       return res.status(400).json({ error: "transactionId is required and must be a number" });
     }
+
     const parsedScore = Number(score);
     if (!Number.isInteger(parsedScore) || parsedScore < 1 || parsedScore > 10) {
       return res.status(400).json({ error: "score must be an integer between 1 and 10" });
     }
+
     if (!raterEmail) {
       return res.status(401).json({ error: "Unauthorized" });
     }
@@ -340,12 +342,12 @@ exports.rateTransaction = async (req, res) => {
     const tx = await TradeTransaction.findByPk(transactionId);
     if (!tx) return res.status(404).json({ error: "Transaction not found" });
 
-    if (tx.status !== "Complete" || tx.status !== "Cancelled") {
-      return res
-        .status(409)
-        .json({ error: "You can only rate a transaction when it's Complete" });
+    // 🔧 bugfix: only allow rating when Complete
+    if (tx.status !== "Complete") {
+      return res.status(409).json({ error: "You can only rate a transaction when it's Complete" });
     }
 
+    // Decide which side is being rated
     let targetField = null;
     if (tx.offerEmail === raterEmail) {
       targetField = "accepterRating"; // offerer rates the accepter
@@ -355,12 +357,63 @@ exports.rateTransaction = async (req, res) => {
       return res.status(403).json({ error: "You are not a participant in this transaction" });
     }
 
+    // Prevent double rating by the same rater for this tx
     if (tx[targetField] != null) {
-      return res.status(409).json({ error: "You have already submitted a rating for this transaction" });
+      return res
+        .status(409)
+        .json({ error: "You have already submitted a rating for this transaction" });
     }
 
+    // Save rating on the transaction
     tx[targetField] = parsedScore;
     await tx.save();
+
+    // ⬇️ Update the rated user's aggregate RatingScore on User
+    try {
+      const targetEmail = (targetField === "accepterRating") ? tx.accepterEmail : tx.offerEmail;
+
+      // ratings the user received as offerer
+      const offerAgg = await TradeTransaction.findOne({
+        attributes: [
+          [sequelize.fn('AVG', sequelize.col('offererRating')), 'avg'],
+          [sequelize.fn('COUNT', sequelize.col('offererRating')), 'count']
+        ],
+        where: {
+          offerEmail: targetEmail,
+          offererRating: { [Op.ne]: null }
+        }
+      });
+
+      // ratings the user received as accepter
+      const accepterAgg = await TradeTransaction.findOne({
+        attributes: [
+          [sequelize.fn('AVG', sequelize.col('accepterRating')), 'avg'],
+          [sequelize.fn('COUNT', sequelize.col('accepterRating')), 'count']
+        ],
+        where: {
+          accepterEmail: targetEmail,
+          accepterRating: { [Op.ne]: null }
+        }
+      });
+
+      const offerAvg = parseFloat(offerAgg?.get('avg')) || 0;
+      const offerCount = parseInt(offerAgg?.get('count')) || 0;
+      const accepterAvg = parseFloat(accepterAgg?.get('avg')) || 0;
+      const accepterCount = parseInt(accepterAgg?.get('count')) || 0;
+
+      const totalCount = offerCount + accepterCount;
+      const combinedAvg = totalCount > 0
+        ? ((offerAvg * offerCount) + (accepterAvg * accepterCount)) / totalCount
+        : parsedScore; // fallback to this new rating if it's the first one
+
+      await User.update(
+        { RatingScore: combinedAvg },
+        { where: { email: targetEmail } }
+      );
+    } catch (e) {
+      console.error("Failed to update user RatingScore:", e);
+      // don't fail the request if score update has an issue
+    }
 
     return res.status(200).json({
       message: "Rating submitted",

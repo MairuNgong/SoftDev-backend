@@ -18,6 +18,6 @@ router.get('/get_offer', requireAuth, transactionController.getOffer);
 
 // NEW: rate a transaction (score 1–10)
 // body: { transactionId, score }
-// router.post('/rate', requireAuth, transactionController.rateTransaction);
+router.post('/rate', requireAuth, transactionController.rateTransaction);
 
 module.exports = router;
