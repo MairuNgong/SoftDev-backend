@@ -1,5 +1,5 @@
 const User = require('../models/User');
-
+const InterestedCatagory = require('../models/InterestedCatagory');
 // exports.getAllUsers = async (req, res) => {
 //   try {
 //     const users = await User.findAll();
@@ -8,6 +8,23 @@ const User = require('../models/User');
 //     res.status(500).json({ error: err.message });
 //   }
 // };
+
+function extractCategories(body) {
+  const { categoryNames } = body || {};
+
+  if (!categoryNames) return []; // empty string, undefined, null → []
+
+  if (Array.isArray(categoryNames)) {
+    return categoryNames.filter(Boolean).map(s => String(s).trim()).filter(Boolean);
+  }
+
+  if (typeof categoryNames === "string") {
+    const trimmed = categoryNames.trim();
+    return trimmed ? [trimmed] : []; // empty string → []
+  }
+
+  return [];
+}
 
 exports.getUserByEmail = async (req, res) => {
   try {
@@ -31,7 +48,24 @@ exports.updateUser = async (req, res) => {
     }
 
     await user.update(req.body);
-    res.json(user);
+
+    const cats = extractCategories(req.body);
+    if (cats !== null) {
+      await InterestedCatagory.destroy({ where: { email: user.email } });
+      if (cats.length > 0) {
+        await InterestedCatagory.bulkCreate(
+          cats.map(name => ({ email: user.email, categoryName: name }))
+        );
+      }
+    }
+
+
+    const updatedUser = await User.findByPk(user.email, {
+      include: { model: InterestedCatagory, attributes: ['categoryName'] },
+    });
+    const plain = updatedUser.get({ plain: true });
+    plain.InterestedCategories = plain.InterestedCategories.map(c => c.categoryName);
+    res.json(plain);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
