@@ -95,11 +95,20 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
 };
 
 exports.getAvailableUnwatchedItems = async (req, res) => {
+
+  const includeLatestPicture = {
+    model: ItemPicture,
+    attributes: ['imageLink', 'createdAt'],
+    limit: 1,
+    order: [['createdAt', 'DESC']],
+    separate: true
+  };
+
   try {
     // Guest (no login)
     if (!req.user || !req.user.email) {
       const randomItems = await Item.findAll({
-        include: { model: User, attributes: ['RatingScore'] }, 
+        include: [{ model: User, attributes: ['RatingScore'] }, { model: ItemCatagory, attributes: ['id', 'categoryName'], required: false }, includeLatestPicture],
         order: [[Item.sequelize.fn('RANDOM')]],
         limit: 10
       });
@@ -118,7 +127,7 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
     // Fetch unwatched items
     let availableUnwatchedItems = await Item.findAll({
       where: { id: { [Op.notIn]: watchedItemIds } },
-      include: { model: User, attributes: ['RatingScore'] }, 
+      include: [{ model: User, attributes: ['RatingScore'] }, { model: ItemCatagory, attributes: ['id', 'categoryName'], required: false }, includeLatestPicture],
       order: [['createdAt', 'DESC']]
     });
 
