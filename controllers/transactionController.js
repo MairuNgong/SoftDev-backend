@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
-const { User,TradeTransaction, TradeItem, Item,ItemCatagory,ItemPicture } = require('../models');
+const { User, TradeTransaction, TradeItem, Item, ItemCatagory, ItemPicture, WatchedItem } = require('../models');
 const sequelize = require('../config/db');
-const {formatItem} = require("../utils/itemFilter")
+const { formatItem } = require("../utils/itemFilter")
 
 exports.getTransactions = async (req, res) => {
   try {
@@ -33,22 +33,22 @@ exports.getTransactions = async (req, res) => {
 
     // Flatten nested arrays for categories/pictures
     transactions = transactions.map((t) => {
-    const plain = t.get({ plain: true });
+      const plain = t.get({ plain: true });
 
-    if (plain.TradeItems) {
-      plain.TradeItems = plain.TradeItems.map((tradeItem) => {
-        if (!tradeItem.Item) return tradeItem;
+      if (plain.TradeItems) {
+        plain.TradeItems = plain.TradeItems.map((tradeItem) => {
+          if (!tradeItem.Item) return tradeItem;
 
-        // Use your formatItem here
-        return {
-          ...tradeItem,
-          Item: formatItem(tradeItem.Item)
-        };
-      });
-    }
+          // Use your formatItem here
+          return {
+            ...tradeItem,
+            Item: formatItem(tradeItem.Item)
+          };
+        });
+      }
 
-    return plain;
-  });
+      return plain;
+    });
 
     res.json({ transactions });
   } catch (err) {
@@ -212,7 +212,9 @@ exports.cancelTransaction = async (req, res) => {
     const { transactionId } = req.body;
     const user = req.user.email;
 
-    const transaction = await TradeTransaction.findByPk(transactionId);
+    const transaction = await TradeTransaction.findByPk(transactionId, {
+      include: { model: TradeItem, include: [Item] }
+    });
     if (!transaction) return res.status(404).json({ error: "Transaction not found" });
 
     if (transaction.offerEmail !== user && transaction.accepterEmail !== user) {
@@ -222,6 +224,25 @@ exports.cancelTransaction = async (req, res) => {
     if (transaction.status !== "Complete") {
       transaction.status = "Cancelled";
       await transaction.save();
+
+      // Add other user's items to watched items
+      const otherUserEmail = transaction.offerEmail === user
+        ? transaction.accepterEmail
+        : transaction.offerEmail;
+
+      const otherUserItemIds = (transaction.TradeItems || [])
+        .filter(ti => ti.Item && ti.Item.ownerEmail === otherUserEmail)
+        .map(ti => ti.itemId);
+
+      const currentUser = await User.findByPk(user);
+      if (currentUser && otherUserItemIds.length > 0) {
+        for (const itemId of otherUserItemIds) {
+          await WatchedItem.findOrCreate({
+            where: { emailAddress: user, itemId },
+            defaults: { emailAddress: user, itemId, dateTime: new Date() }
+          });
+        }
+      }
     }
 
     res.json(transaction);
@@ -241,9 +262,9 @@ exports.getOffer = async (req, res) => {
 
     // Find all "Offering" transactions where user is the accepter
     const transactions = await TradeTransaction.findAll({
-      where: { 
-        accepterEmail: req.user.email, 
-        status: 'Offering' 
+      where: {
+        accepterEmail: req.user.email,
+        status: 'Offering'
       },
       include: [
         {
@@ -282,7 +303,7 @@ exports.getOffer = async (req, res) => {
 
         if (conflict) {
           t.status = 'Locked-Offering';
-        } 
+        }
       }
     }
 
