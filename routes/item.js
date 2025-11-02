@@ -7,10 +7,6 @@ const { upload, uploadImageToCloudinary } = require('../middleware/cloudinary');
 
 router.get('/', tryAuth, itemController.getItems);
 
-
-
-
-
 router.get('/available_items', tryAuth, ViewItemController.getAvailableUnwatchedItems);
 router.get('/:id', tryAuth, itemController.getItemById);
 

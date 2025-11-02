@@ -1,5 +1,5 @@
 const { Op, Model } = require('sequelize');
-const { User, Item, ItemCatagory, ItemPicture } = require('../models');
+const { User, Item, ItemCatagory, ItemPicture, InterestedCatagory } = require('../models');
 const { formatItem, BaseFilter } = require('../utils/itemFilter');
 
 /**
@@ -95,11 +95,24 @@ exports.searchByCategoryAndKeyword = async (req, res) => {
 };
 
 exports.getAvailableUnwatchedItems = async (req, res) => {
+
+  const includeLatestPicture = {
+    model: ItemPicture,
+    attributes: ['imageLink', 'createdAt'],
+    limit: 1,
+    order: [['createdAt', 'DESC']],
+    separate: true
+  };
+
   try {
     // Guest (no login)
     if (!req.user || !req.user.email) {
       const randomItems = await Item.findAll({
-        include: { model: User, attributes: ['RatingScore'] }, 
+        include: [
+          { model: User, attributes: ['RatingScore', 'Location'] },
+          { model: ItemCatagory, attributes: ['id', 'categoryName'], required: false },
+          includeLatestPicture
+        ],
         order: [[Item.sequelize.fn('RANDOM')]],
         limit: 10
       });
@@ -108,37 +121,81 @@ exports.getAvailableUnwatchedItems = async (req, res) => {
       return res.status(200).json(filtered);
     }
 
-    const user = await User.findByPk(req.user.email);
+    const user = await User.findByPk(req.user.email, {
+      include: { model: InterestedCatagory, attributes: ['categoryName'] }
+    });
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Get user's interested categories and location
+    const interestedCategories = user.InterestedCategories.map(c => c.categoryName);
+    const userLocation = user.Location;
 
     // Get watched item IDs
     const watchedItems = await user.getWatchedItems({ joinTableAttributes: [] });
     const watchedItemIds = watchedItems.map(i => i.id);
 
-    // Fetch unwatched items
+    // Fetch unwatched items with owner location
     let availableUnwatchedItems = await Item.findAll({
       where: { id: { [Op.notIn]: watchedItemIds } },
-      include: { model: User, attributes: ['RatingScore'] }, 
+      include: [
+        { model: User, attributes: ['RatingScore', 'Location'] },
+        { model: ItemCatagory, attributes: ['id', 'categoryName'], required: false },
+        includeLatestPicture
+      ],
       order: [['createdAt', 'DESC']]
     });
 
     let formatted = availableUnwatchedItems.map(formatItem);
     let filtered = await BaseFilter(formatted, req.user);
 
+    // Sort items by priority: category match first, then location match
+    const sortedItems = filtered.sort((a, b) => {
+      const aCategoryMatch = a.ItemCategories?.some(cat => interestedCategories.includes(cat)) ? 1 : 0;
+      const bCategoryMatch = b.ItemCategories?.some(cat => interestedCategories.includes(cat)) ? 1 : 0;
+
+      // Compare owner's location with user's location
+      const aLocationMatch = a.ownerLocation === userLocation ? 1 : 0;
+      const bLocationMatch = b.ownerLocation === userLocation ? 1 : 0;
+
+      // Priority: category match > location match
+      if (aCategoryMatch !== bCategoryMatch) return bCategoryMatch - aCategoryMatch;
+      if (aLocationMatch !== bLocationMatch) return bLocationMatch - aLocationMatch;
+      return 0;
+    });
+
     // If no items left → reset watched items and re-fetch
-    if (filtered.length === 0) {
+    if (sortedItems.length === 0) {
       await user.setWatchedItems([]);
       const resetItems = await Item.findAll({
+        include: [
+          { model: User, attributes: ['RatingScore', 'Location'] },
+          { model: ItemCatagory, attributes: ['id', 'categoryName'], required: false },
+          includeLatestPicture
+        ],
         order: [['createdAt', 'DESC']]
       });
       formatted = resetItems.map(formatItem);
       filtered = await BaseFilter(formatted, req.user);
+
+      // Sort reset items too
+      const sortedResetItems = filtered.sort((a, b) => {
+        const aCategoryMatch = a.ItemCategories?.some(cat => interestedCategories.includes(cat)) ? 1 : 0;
+        const bCategoryMatch = b.ItemCategories?.some(cat => interestedCategories.includes(cat)) ? 1 : 0;
+
+        const aLocationMatch = a.ownerLocation === userLocation ? 1 : 0;
+        const bLocationMatch = b.ownerLocation === userLocation ? 1 : 0;
+
+        if (aCategoryMatch !== bCategoryMatch) return bCategoryMatch - aCategoryMatch;
+        if (aLocationMatch !== bLocationMatch) return bLocationMatch - aLocationMatch;
+        return 0;
+      });
+
+      return res.status(200).json({ items: sortedResetItems.slice(0, 10) });
     }
 
-    return res.status(200).json({ items: filtered.slice(0, 10) });
+    return res.status(200).json({ items: sortedItems.slice(0, 10) });
   } catch (error) {
     console.error('Error in getAvailableUnwatchedItems:', error);
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
-

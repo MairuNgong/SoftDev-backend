@@ -3,7 +3,8 @@ const { Op } = require('sequelize');
 const Item = require('../models/Item');
 const ItemCatagory = require('../models/ItemCatagory'); // project spelling
 const ItemPicture = require('../models/ItemPicture');
-const User = require('../models/User')
+const User = require('../models/User');
+const { TradeTransaction, TradeItem } = require('../models');
 const { formatItem } = require('../utils/itemFilter');
 
 /** Safe field whitelist — adjust to your Item model */
@@ -211,7 +212,7 @@ exports.updateItem = async (req, res) => {
   }
 };
 
-/** DELETE /items/:id */
+
 exports.deleteItem = async (req, res) => {
   try {
     const item = await Item.findByPk(req.params.id);
@@ -219,6 +220,30 @@ exports.deleteItem = async (req, res) => {
     if (!req.user || item.ownerEmail !== req.user.email) {
       return res.status(403).json({ error: 'Not the owner' });
     }
+
+    // Find all 'Offering' transactions that involve this item and the user
+    const tradeItems = await TradeItem.findAll({
+      where: { itemId: item.id },
+      include: {
+        model: TradeTransaction,
+        where: {
+          status: 'Offering',
+          [Op.or]: [
+            { accepterEmail: req.user.email },
+            { offerEmail: req.user.email }
+          ]
+        }
+      }
+    });
+
+    // Cancel each transaction
+    for (const tradeItem of tradeItems) {
+      if (tradeItem.TradeTransaction) {
+        await tradeItem.TradeTransaction.update({ status: 'Cancelled' });
+      }
+    }
+
+    // Delete the item
     await item.destroy();
     return res.json({ success: true });
   } catch (err) {
